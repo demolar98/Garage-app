@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Гараж</title>
+<style>
+:root{
+  --bg:#15171a; --bg2:#1c1f23; --line:#2b2f35; --text:#eceae4; --dim:#9a9d9a;
+  --amber:#e08a2c; --amber-dim:#5a4326; --danger:#c85450; --mono:'SF Mono',Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#f2f0ea; --bg2:#ffffff; --line:#ddd8cc; --text:#211f1a; --dim:#7a766c; --amber-dim:#f1dcb8;
+  }
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html{height:100%; scroll-padding-top:env(safe-area-inset-top,0px);}
+body{
+  height:100%; background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+header{
+  padding:14px 18px 12px; border-bottom:1px solid var(--line);
+  padding-top:calc(14px + env(safe-area-inset-top,0px));
+  display:flex; align-items:baseline; gap:8px;
+}
+header h1{font-size:17px; font-weight:700; letter-spacing:.2px;}
+header .crumb{font-size:13px; color:var(--dim);}
+main{flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;}
+.screen{padding:14px 16px 24px; display:none;}
+.screen.active{display:block;}
+.card{
+  background:var(--bg2); border:1px solid var(--line); border-radius:10px;
+  padding:14px; margin-bottom:10px;
+}
+.list-row{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 4px; border-bottom:1px solid var(--line); cursor:pointer;
+}
+.list-row:last-child{border-bottom:none;}
+.list-row .t{font-size:15px; font-weight:600;}
+.list-row .s{font-size:12px; color:var(--dim); margin-top:2px;}
+.list-row .arrow{color:var(--dim); font-size:16px;}
+.empty{padding:40px 10px; text-align:center; color:var(--dim); font-size:14px; line-height:1.5;}
+button{font-family:inherit; border:none; cursor:pointer; -webkit-tap-highlight-color:transparent;}
+.btn{
+  width:100%; padding:13px; border-radius:9px; font-size:15px; font-weight:600;
+  background:var(--amber); color:#1a1410; margin-top:6px;
+}
+.btn.secondary{background:var(--bg2); color:var(--text); border:1px solid var(--line);}
+.btn.danger{background:transparent; color:var(--danger); border:1px solid var(--danger);}
+.fab{
+  position:fixed; right:18px; bottom:calc(78px + env(safe-area-inset-bottom,0px));
+  width:52px; height:52px; border-radius:50%; background:var(--amber); color:#1a1410;
+  font-size:26px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,.35);
+}
+input,textarea,select{
+  width:100%; padding:11px 12px; border-radius:8px; border:1px solid var(--line);
+  background:var(--bg); color:var(--text); font-size:15px; margin-bottom:10px; font-family:inherit;
+}
+label{font-size:12px; color:var(--dim); display:block; margin-bottom:5px; margin-top:2px;}
+.row2{display:flex; gap:8px;}
+.row2 > div{flex:1;}
+.seg{display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; margin-bottom:10px;}
+.seg button{flex:1; padding:9px 0; background:var(--bg); color:var(--dim); font-size:13px; font-weight:600;}
+.seg button.on{background:var(--amber-dim); color:var(--amber);}
+.entry{border-left:2px solid var(--amber); padding:10px 12px; margin-bottom:10px; background:var(--bg2); border-radius:0 8px 8px 0;}
+.entry .top{display:flex; justify-content:space-between; font-size:13px; color:var(--dim); margin-bottom:4px;}
+.entry .odo{font-family:var(--mono); color:var(--amber); font-weight:600;}
+.entry .work{font-size:15px; font-weight:600; margin-bottom:6px;}
+.entry .part{font-size:13px; color:var(--dim); display:flex; justify-content:space-between; padding:2px 0;}
+.entry .part .art{font-family:var(--mono); color:var(--text);}
+.entry .actions{display:flex; gap:16px; margin-top:8px;}
+.entry .actions a{font-size:12px; color:var(--dim); text-decoration:underline;}
+.partfield{border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; position:relative;}
+.pf-wrap{position:relative;}
+.pf-dropdown{position:absolute; left:0; right:0; top:100%; margin-top:2px; background:var(--bg2); border:1px solid var(--line); border-radius:8px; max-height:180px; overflow-y:auto; z-index:20; display:none;}
+.pf-opt{padding:9px 12px; font-size:14px; border-bottom:1px solid var(--line); cursor:pointer;}
+.pf-opt:last-child{border-bottom:none;}
+.pf-opt:active{background:var(--amber-dim);}
+.pf-opt .art{color:var(--dim); font-family:var(--mono); font-size:12px; margin-left:6px;}
+.pf-addsuggest{display:none; color:var(--amber); font-size:13px; font-weight:600; padding:6px 2px 2px; cursor:pointer;}
+.rm{position:absolute; top:6px; right:8px; color:var(--dim); font-size:18px; background:none;}
+.addline{font-size:13px; color:var(--amber); font-weight:600; padding:6px 0; text-align:left;}
+nav{
+  display:flex; border-top:1px solid var(--line); background:var(--bg2);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+nav button{
+  flex:1; padding:11px 0 9px; background:none; color:var(--dim); font-size:11px;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+}
+nav button .ic{font-size:20px;}
+nav button.on{color:var(--amber);}
+.searchbox{position:sticky; top:0; z-index:5;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="hdrTitle">Гараж</h1>
+  <span class="crumb" id="hdrCrumb"></span>
+</header>
+
+<main>
+
+  <!-- CARS LIST -->
+  <section class="screen active" id="s-cars">
+    <div class="card" id="carsCard"></div>
+    <button class="btn" onclick="showAddCar()">+ Добавить автомобиль</button>
+  </section>
+
+  <!-- CAR MENU -->
+  <section class="screen" id="s-carMenu">
+    <div class="card">
+      <div class="list-row" onclick="go('history')"><div><div class="t">Просмотреть историю обслуживания</div></div><div class="arrow">›</div></div>
+      <div class="list-row" onclick="go('addEntry')"><div><div class="t">Добавить данные</div></div><div class="arrow">›</div></div>
+      <div class="list-row" onclick="go('editList')"><div><div class="t">Изменить данные</div></div><div class="arrow">›</div></div>
+    </div>
+    <button class="btn danger" onclick="deleteCar()">Удалить автомобиль</button>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="screen" id="s-history"></section>
+
+  <!-- ADD/EDIT ENTRY -->
+  <section class="screen" id="s-entryForm"></section>
+
+  <!-- EDIT LIST -->
+  <section class="screen" id="s-editList"></section>
+
+  <!-- PARTS -->
+  <section class="screen" id="s-parts">
+    <div class="searchbox"><input id="partSearch" placeholder="Поиск по названию или артикулу" oninput="renderParts()"></div>
+    <div class="card" id="partsCard"></div>
+    <button class="btn" onclick="showAddPart()">+ Добавить запчасть</button>
+  </section>
+
+  <section class="screen" id="s-addPart"></section>
+  <section class="screen" id="s-addCar"></section>
+
+</main>
+
+<nav>
+  <button id="navCars" class="on" onclick="switchTab('cars')"><span class="ic">🚗</span>Автомобили</button>
+  <button id="navParts" onclick="switchTab('parts')"><span class="ic">🔧</span>Запчасти</button>
+</nav>
+
+<script>
+try{ if(window.Telegram && window.Telegram.WebApp){ Telegram.WebApp.ready(); Telegram.WebApp.expand(); } }catch(e){}
+
+const store = {
+  get(k, d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+let cars = store.get('cars', []);
+let parts = store.get('parts', []);
+let curCarId = null, curTab='cars', curEntryId=null;
+
+function saveCars(){ store.set('cars', cars); }
+function saveParts(){ store.set('parts', parts); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function setHeader(title, crumb){
+  document.getElementById('hdrTitle').textContent = title;
+  document.getElementById('hdrCrumb').textContent = crumb || '';
+}
+
+function switchTab(t){
+  guardLeaveEntryForm(()=> doSwitchTab(t));
+}
+function doSwitchTab(t){
+  curTab = t;
+  document.getElementById('navCars').classList.toggle('on', t==='cars');
+  document.getElementById('navParts').classList.toggle('on', t==='parts');
+  if(t==='cars'){ renderCars(); showScreen('s-cars'); setHeader('Гараж',''); }
+  else { renderParts(); showScreen('s-parts'); setHeader('Запчасти',''); }
+}
+function isEntryFormDirty(){
+  const scr = document.getElementById('s-entryForm');
+  if(!scr.classList.contains('active')) return false;
+  const date = document.getElementById('f-date')?.value || '';
+  const km = document.getElementById('f-km')?.value || '';
+  const mh = document.getElementById('f-mh')?.value || '';
+  const work = document.getElementById('f-work')?.value.trim() || '';
+  const anyPart = [...document.querySelectorAll('#partsFields .pf-name, #partsFields .pf-art')].some(i=>i.value.trim());
+  return !!(date || km || mh || work || anyPart);
+}
+function guardLeaveEntryForm(afterFn){
+  if(!isEntryFormDirty()){ afterFn(); return; }
+  const wantsSave = confirm('Вы не сохранили введённые данные.\n\nОК — сохранить и выйти\nОтмена — выйти без сохранения');
+  if(wantsSave){
+    const ok = saveEntry(true);
+    if(!ok){
+      const discard = confirm('Чтобы сохранить, нужно указать дату и вид работы.\nВыйти без сохранения?');
+      if(!discard) return;
+    }
+  }
+  afterFn();
+}
+
+/* ---------- CARS ---------- */
+function renderCars(){
+  const c = document.getElementById('carsCard');
+  if(!cars.length){ c.innerHTML = '<div class="empty">Пока нет ни одного автомобиля.<br>Добавьте первый, чтобы вести историю обслуживания.</div>'; return; }
+  c.innerHTML = cars.map(car=>{
+    const latest = latestEntry(car);
+    const sub = latest ? odoLabel(latest) : 'Нет записей';
+    return `<div class="list-row" onclick="openCar('${car.id}')">
+      <div><div class="t">${esc(car.name)}</div><div class="s">${sub}</div></div>
+      <div class="arrow">›</div></div>`;
+  }).join('');
+}
+function showAddCar(){
+  document.getElementById('s-addCar').innerHTML = `
+    <label>Название автомобиля</label>
+    <input id="newCarName" placeholder="Например: Хонда СБР 600">
+    <button class="btn" onclick="addCar()">Сохранить</button>
+    <button class="btn secondary" onclick="switchTab('cars')">Отмена</button>`;
+  showScreen('s-addCar'); setHeader('Новый автомобиль','');
+}
+function addCar(){
+  const name = document.getElementById('newCarName').value.trim();
+  if(!name) return;
+  cars.push({id:uid(), name, entries:[]});
+  saveCars(); switchTab('cars');
+}
+function openCar(id){
+  curCarId = id;
+  const car = cars.find(c=>c.id===id);
+  showScreen('s-carMenu'); setHeader(car.name, 'Автомобиль');
+}
+function deleteCar(){
+  if(!confirm('Удалить автомобиль и всю его историю?')) return;
+  cars = cars.filter(c=>c.id!==curCarId); saveCars(); switchTab('cars');
+}
+function currentCar(){ return cars.find(c=>c.id===curCarId); }
+
+function go(where){
+  if(where==='history') renderHistory();
+  else if(where==='addEntry') showEntryForm(null);
+  else if(where==='editList') renderEditList();
+}
+
+/* ---------- HISTORY ---------- */
+function renderHistory(){
+  const car = currentCar();
+  const box = document.getElementById('s-history');
+  const sorted = [...car.entries].sort((a,b)=> (b.km||b.mh||0) - (a.km||a.mh||0));
+  if(!sorted.length){
+    box.innerHTML = '<div class="empty">Записей пока нет.</div><button class="btn secondary" onclick="go(\'\')">Назад</button>';
+  } else {
+    box.innerHTML = sorted.map(e=>`
+      <div class="entry">
+        <div class="top"><span>${e.date}</span><span class="odo">${odoLabel(e)}</span></div>
+        <div class="work">${esc(e.work)}</div>
+        ${e.items.map(it=>`<div class="part"><span>${esc(it.name)}</span><span class="art">${esc(it.article||'')}</span></div>`).join('')}
+      </div>`).join('');
+  }
+  box.innerHTML += '<button class="btn secondary" onclick="showScreen(\'s-carMenu\')">‹ К автомобилю</button>';
+  showScreen('s-history'); setHeader(car.name,'История');
+}
+
+/* ---------- EDIT LIST ---------- */
+function renderEditList(){
+  const car = currentCar();
+  const box = document.getElementById('s-editList');
+  const sorted = [...car.entries].sort((a,b)=> (b.km||b.mh||0) - (a.km||a.mh||0));
+  if(!sorted.length){
+    box.innerHTML = '<div class="empty">Нет записей для изменения.</div>';
+  } else {
+    box.innerHTML = '<div class="card">' + sorted.map(e=>`
+      <div class="list-row" onclick="showEntryForm('${e.id}')">
+        <div><div class="t">${e.date} — ${esc(e.work)}</div><div class="s">${odoLabel(e)}</div></div>
+        <div class="arrow">›</div></div>`).join('') + '</div>';
+  }
+  box.innerHTML += '<button class="btn secondary" onclick="showScreen(\'s-carMenu\')">‹ К автомобилю</button>';
+  showScreen('s-editList'); setHeader(car.name,'Изменить данные');
+}
+
+/* ---------- ENTRY FORM (add/edit) ---------- */
+function showEntryForm(entryId){
+  curEntryId = entryId;
+  const car = currentCar();
+  const e = entryId ? car.entries.find(x=>x.id===entryId) : {date:'', km:'', mh:'', work:'', items:[{name:'',article:''}]};
+  const box = document.getElementById('s-entryForm');
+  box.innerHTML = `
+    <label>Дата</label>
+    <input type="date" id="f-date" value="${toInputDate(e.date)}">
+    <div class="row2">
+      <div><label>Пробег, км</label><input id="f-km" type="number" placeholder="—" value="${e.km||''}"></div>
+      <div><label>Мото-часы</label><input id="f-mh" type="number" placeholder="—" value="${e.mh||''}"></div>
+    </div>
+    <label>Вид работы</label>
+    <input id="f-work" placeholder="Например: Замена фильтров и масла" value="${escAttr(e.work)}">
+    <label>Запчасти</label>
+    <div id="partsFields"></div>
+    <button type="button" class="addline" onclick="addPartField()">+ ещё запчасть</button>
+    <button class="btn" onclick="saveEntry()">Сохранить запись</button>
+    ${entryId?'<button class="btn danger" onclick="deleteEntry()">Удалить запись</button>':''}
+    <button class="btn secondary" onclick="cancelEntryForm()">Отмена</button>
+  `;
+  const pf = document.getElementById('partsFields');
+  (e.items && e.items.length ? e.items : [{name:'',article:''}]).forEach(it=>addPartField(it.name, it.article));
+  showScreen('s-entryForm'); setHeader(car.name, entryId?'Изменить запись':'Новая запись');
+}
+function addPartField(name='', article=''){
+  const pf = document.getElementById('partsFields');
+  const wrap = document.createElement('div');
+  wrap.className = 'partfield';
+  wrap.innerHTML = `
+    <button type="button" class="rm" onclick="this.parentElement.remove()">×</button>
+    <label>Название</label>
+    <div class="pf-wrap">
+      <input class="pf-name" value="${escAttr(name)}" placeholder="Название запчасти/расходника" autocomplete="off">
+      <div class="pf-dropdown"></div>
+    </div>
+    <label>Артикул</label><input class="pf-art" value="${escAttr(article)}" placeholder="Артикул">
+    <div class="pf-addsuggest"></div>`;
+  pf.appendChild(wrap);
+
+  const nameInput = wrap.querySelector('.pf-name');
+  const artInput = wrap.querySelector('.pf-art');
+  const dd = wrap.querySelector('.pf-dropdown');
+  const addBox = wrap.querySelector('.pf-addsuggest');
+
+  function refresh(){
+    const q = nameInput.value.trim().toLowerCase();
+    if(!q){ dd.style.display='none'; dd.innerHTML=''; addBox.style.display='none'; addBox.innerHTML=''; return; }
+    const matches = parts.filter(p=>p.name.toLowerCase().includes(q));
+    if(matches.length){
+      dd.innerHTML = matches.slice(0,6).map(p=>
+        `<div class="pf-opt" data-id="${p.id}">${esc(p.name)}${p.article?' <span class="art">'+esc(p.article)+'</span>':''}</div>`
+      ).join('');
+      dd.style.display='block';
+    } else { dd.style.display='none'; dd.innerHTML=''; }
+    refreshAddBox();
+  }
+  function refreshAddBox(){
+    const q = nameInput.value.trim().toLowerCase();
+    const art = artInput.value.trim();
+    const exact = parts.some(p=>p.name.toLowerCase()===q);
+    if(q && art && !exact){
+      addBox.textContent = `+ добавить «${nameInput.value.trim()}» в каталог запчастей`;
+      addBox.style.display='block';
+    } else { addBox.style.display='none'; addBox.innerHTML=''; }
+  }
+  nameInput.addEventListener('input', refresh);
+  nameInput.addEventListener('focus', refresh);
+  nameInput.addEventListener('blur', ()=> setTimeout(()=>{ dd.style.display='none'; }, 150));
+  artInput.addEventListener('input', refreshAddBox);
+  dd.addEventListener('click', ev=>{
+    const opt = ev.target.closest('.pf-opt'); if(!opt) return;
+    const p = parts.find(x=>x.id===opt.dataset.id); if(!p) return;
+    nameInput.value = p.name; artInput.value = p.article||'';
+    dd.style.display='none'; dd.innerHTML=''; addBox.style.display='none'; addBox.innerHTML='';
+  });
+  addBox.addEventListener('click', ()=>{
+    const nm = nameInput.value.trim(); const art = artInput.value.trim();
+    if(!nm || !art) return;
+    parts.push({id:uid(), name:nm, article:art}); saveParts();
+    addBox.textContent = '✓ добавлено в каталог запчастей';
+    setTimeout(()=>{ addBox.style.display='none'; addBox.innerHTML=''; }, 1200);
+  });
+}
+function saveEntry(skipNav){
+  const car = currentCar();
+  const date = document.getElementById('f-date').value;
+  const km = parseFloat(document.getElementById('f-km').value) || 0;
+  const mh = parseFloat(document.getElementById('f-mh').value) || 0;
+  const work = document.getElementById('f-work').value.trim();
+  if(!date || !work){ alert('Укажите дату и вид работы'); return false; }
+  const items = [...document.querySelectorAll('#partsFields .partfield')].map(w=>({
+    name: w.querySelector('.pf-name').value.trim(),
+    article: w.querySelector('.pf-art').value.trim()
+  })).filter(it=>it.name);
+  const displayDate = fromInputDate(date);
+  const data = {id: curEntryId || uid(), date: displayDate, km, mh, work, items};
+  if(curEntryId){
+    const idx = car.entries.findIndex(x=>x.id===curEntryId);
+    car.entries[idx] = data;
+  } else {
+    car.entries.push(data);
+  }
+  saveCars();
+  if(!skipNav){ showScreen('s-carMenu'); setHeader(car.name,'Автомобиль'); }
+  return true;
+}
+function deleteEntry(){
+  if(!confirm('Удалить эту запись?')) return;
+  const car = currentCar();
+  car.entries = car.entries.filter(x=>x.id!==curEntryId);
+  saveCars(); renderEditList();
+}
+function cancelEntryForm(){ showScreen('s-carMenu'); }
+
+/* ---------- PARTS CATALOG ---------- */
+function renderParts(){
+  const q = (document.getElementById('partSearch').value||'').toLowerCase();
+  const filtered = parts.filter(p => p.name.toLowerCase().includes(q) || (p.article||'').toLowerCase().includes(q));
+  const c = document.getElementById('partsCard');
+  if(!parts.length){ c.innerHTML = '<div class="empty">Каталог пуст. Добавьте первую запчасть.</div>'; return; }
+  if(!filtered.length){ c.innerHTML = '<div class="empty">Ничего не найдено.</div>'; return; }
+  c.innerHTML = filtered.map(p=>`
+    <div class="list-row" onclick="editPart('${p.id}')">
+      <div><div class="t">${esc(p.name)}</div><div class="s">${esc(p.article||'—')}</div></div>
+      <div class="arrow">›</div></div>`).join('');
+}
+function showAddPart(id){
+  const p = id ? parts.find(x=>x.id===id) : {name:'', article:''};
+  window.__editPartId = id || null;
+  document.getElementById('s-addPart').innerHTML = `
+    <label>Название</label><input id="p-name" value="${escAttr(p.name)}" placeholder="Название запчасти">
+    <label>Артикул</label><input id="p-art" value="${escAttr(p.article)}" placeholder="Артикул">
+    <button class="btn" onclick="savePart()">Сохранить</button>
+    ${id?'<button class="btn danger" onclick="delPart()">Удалить</button>':''}
+    <button class="btn secondary" onclick="switchTab('parts')">Отмена</button>`;
+  showScreen('s-addPart'); setHeader(id?'Изменить запчасть':'Новая запчасть','');
+}
+function editPart(id){ showAddPart(id); }
+function savePart(){
+  const name = document.getElementById('p-name').value.trim();
+  const article = document.getElementById('p-art').value.trim();
+  if(!name) return;
+  if(!article && !confirm('Вы забыли внести артикул. Сохранить без артикула?')) return;
+  if(window.__editPartId){
+    const p = parts.find(x=>x.id===window.__editPartId);
+    p.name=name; p.article=article;
+  } else {
+    parts.push({id:uid(), name, article});
+  }
+  saveParts(); switchTab('parts');
+}
+function delPart(){
+  if(!confirm('Удалить запчасть из каталога?')) return;
+  parts = parts.filter(p=>p.id!==window.__editPartId);
+  saveParts(); switchTab('parts');
+}
+
+/* ---------- helpers ---------- */
+function odoLabel(e){
+  const parts=[];
+  if(e.km) parts.push(`${e.km} км`);
+  if(e.mh) parts.push(`${e.mh} м.ч.`);
+  return parts.length ? parts.join(' · ') : '—';
+}
+function latestEntry(car){
+  if(!car.entries.length) return null;
+  return [...car.entries].sort((a,b)=> (b.km||b.mh||0) - (a.km||a.mh||0))[0];
+}
+function esc(s){ return (s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function escAttr(s){ return esc(s).replace(/"/g,'&quot;'); }
+function toInputDate(d){ // "09.11.2025" -> "2025-11-09"
+  if(!d) return '';
+  const m = d.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : d;
+}
+function fromInputDate(d){ // "2025-11-09" -> "09.11.2025"
+  const [y,m,dd] = d.split('-');
+  return `${dd}.${m}.${y}`;
+}
+
+renderCars();
+</script>
+</body>
+</html>
