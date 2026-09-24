@@ -78,6 +78,9 @@ main{flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;}
 }
 .icon-btn:active{background:transparent; color:var(--amber); opacity:1;}
 .empty{padding:40px 10px; text-align:center; color:var(--dim); font-size:14px; line-height:1.5;}
+.storage-status{padding:10px 4px 2px; text-align:center; font-size:12px; color:var(--dim); line-height:1.5;}
+.storage-status.warn{color:var(--amber);}
+.storage-status.danger{color:var(--danger);}
 button{font-family:inherit; border:none; background:none; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation;}
 .btn{
   width:100%; padding:13px; border-radius:9px; font-size:15px; font-weight:600;
@@ -162,6 +165,7 @@ nav button.on{color:var(--amber);}
   <section class="screen active" id="s-cars">
     <div class="card" id="carsCard"></div>
     <button class="btn" data-action="showAddCar">+ Добавить автомобиль</button>
+    <div class="storage-status" id="storageStatus"></div>
   </section>
 
   <section class="screen" id="s-carMenu">
@@ -536,7 +540,21 @@ const Storage = (() => {
     return JSON.parse(JSON.stringify(value));
   }
 
-  return { init, load, persist, isCloud: () => cloudAvailable, hasCloud };
+  /* Сколько ключей CloudStorage занято данными приложения (лимит — 1024 на
+     пользователя у Telegram). Считает только "свои" ключи (с префиксами
+     cars_ и parts_), поэтому число отражает именно то, что ограничивает
+     сохранение новых записей. */
+  async function usage() {
+    if (!hasCloud()) return null;
+    try {
+      const allKeys = await csGetKeys();
+      const used = allKeys.filter(k => k.startsWith('cars_') || k.startsWith('parts_')).length;
+      const max = 1024;
+      return { used, max, remaining: Math.max(0, max - used) };
+    } catch (_) { return null; }
+  }
+
+  return { init, load, persist, usage, chunkSize: CHUNK, isCloud: () => cloudAvailable, hasCloud };
 })();
 
 /* =========================================================================
@@ -843,6 +861,7 @@ const Views = (() => {
 
   /* ---------- Cars list ---------- */
   function renderCars() {
+    renderStorageStatus();
     const card = document.getElementById('carsCard');
     const cars = Store.cars;
     if (!cars.length) {
@@ -880,6 +899,34 @@ const Views = (() => {
     if (!car) return null;
     const sorted = Store.getSortedEntries(car, order);
     return sorted.find(e => cleanNumber(e.mh) > 0) || null;
+  }
+
+  /* ---------- Storage status ---------- */
+  async function renderStorageStatus() {
+    const el = document.getElementById('storageStatus');
+    if (!el) return;
+    if (!Storage.hasCloud()) {
+      el.textContent = '';
+      el.className = 'storage-status';
+      return;
+    }
+    const u = await Storage.usage();
+    if (!u) { el.textContent = ''; el.className = 'storage-status'; return; }
+
+    const pct = Math.round((u.used / u.max) * 100);
+    let text = `Облако: занято ${u.used} из ${u.max} ключей (${pct}%)`;
+
+    const allEntries = Store.cars.flatMap(c => c.entries || []);
+    if (allEntries.length) {
+      const avgLen = allEntries.reduce((sum, e) => sum + JSON.stringify(e).length, 0) / allEntries.length;
+      if (avgLen > 0) {
+        const estimate = Math.floor((u.remaining * Storage.chunkSize) / avgLen);
+        text += ` · осталось места примерно на ${formatNumber(estimate)} записей`;
+      }
+    }
+
+    el.textContent = text;
+    el.className = 'storage-status' + (u.remaining < 30 ? ' danger' : u.remaining < 100 ? ' warn' : '');
   }
 
   /* ---------- Add car ---------- */
@@ -1323,6 +1370,7 @@ const Views = (() => {
     renderCars, showAddCar, addCar, showRenameCar, saveRenameCar,
     openCar, deleteCar, backToCar, backToCarMenu,
     renderHistory, toggleSort,
+    renderStorageStatus,
     showEntryForm,
     addPartField, removePartField, saveEntry, deleteEntry, cancelEntryForm,
     renderParts, showAddPart, savePart, delPart,
@@ -1406,6 +1454,8 @@ document.addEventListener('click', ev => {
 /* =========================================================================
  * Init
  * ========================================================================= */
+Store.subscribe(() => Views.renderStorageStatus());
+
 (async function init() {
   Settings.load();
   await Storage.init();
