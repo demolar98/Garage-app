@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
 <title>Гараж</title>
 <style>
@@ -16,12 +16,19 @@
     --bg:#f2f0ea; --bg2:#ffffff; --line:#ddd8cc; --text:#211f1a; --dim:#7a766c; --amber-dim:#f1dcb8;
   }
 }
-*{box-sizing:border-box; margin:0; padding:0;}
-html{height:100%; scroll-padding-top:env(safe-area-inset-top,0px); -webkit-text-size-adjust:100%;}
+*{box-sizing:border-box; margin:0; padding:0; touch-action:manipulation;}
+html{
+  height:100%;
+  scroll-padding-top:env(safe-area-inset-top,0px);
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
 body{
   height:100%; min-height:100dvh; background:var(--bg2); color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   display:flex; justify-content:center; overflow:hidden;
+  touch-action:pan-y;
+  -webkit-touch-callout:none;
 }
 #shell{
   width:100%; max-width:480px; height:100%; min-height:100dvh; background:var(--bg);
@@ -35,11 +42,19 @@ header{
   padding-top:calc(14px + env(safe-area-inset-top,0px));
   display:flex; align-items:baseline; gap:8px;
 }
-header h1{font-size:17px; font-weight:700; letter-spacing:.2px;}
+header h1{font-size:17px; font-weight:700; letter-spacing:.2px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 header .crumb{font-size:13px; color:var(--dim);}
+.header-sort{
+  width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+  color:var(--dim); font-size:15px; background:transparent; align-self:center; flex-shrink:0;
+  transition:opacity .15s;
+}
+.header-sort:active{color:var(--amber);}
+.header-sort.hidden{display:none;}
 main{flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;}
 .screen{padding:14px 16px 24px; display:none;}
 .screen.active{display:block;}
+.screen.has-fab{padding-bottom:96px;}
 .card{
   background:var(--bg2); border:1px solid var(--line); border-radius:10px;
   padding:14px; margin-bottom:10px;
@@ -52,7 +67,20 @@ main{flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;}
 .list-row .t{font-size:15px; font-weight:600;}
 .list-row .s{font-size:12px; color:var(--dim); margin-top:2px;}
 .list-row .arrow{color:var(--dim); font-size:16px;}
+.list-row .main{flex:1; min-width:0;}
+.list-row .main .t,
+.list-row .main .s{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.list-row .row-actions{display:flex; align-items:center; gap:4px; flex-shrink:0;}
+.icon-btn{
+  width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+  color:var(--dim); font-size:16px; background:transparent; opacity:.6;
+  transition:opacity .15s, color .15s;
+}
+.icon-btn:active{background:transparent; color:var(--amber); opacity:1;}
 .empty{padding:40px 10px; text-align:center; color:var(--dim); font-size:14px; line-height:1.5;}
+.storage-status{padding:10px 4px 2px; text-align:center; font-size:12px; color:var(--dim); line-height:1.5;}
+.storage-status.warn{color:var(--amber);}
+.storage-status.danger{color:var(--danger);}
 button{font-family:inherit; border:none; background:none; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation;}
 .btn{
   width:100%; padding:13px; border-radius:9px; font-size:15px; font-weight:600;
@@ -60,14 +88,27 @@ button{font-family:inherit; border:none; background:none; cursor:pointer; -webki
 }
 .btn.secondary{background:var(--bg2); color:var(--text); border:1px solid var(--line);}
 .btn.danger{background:transparent; color:var(--danger); border:1px solid var(--danger);}
-.fab{
-  position:fixed; right:18px; bottom:calc(78px + env(safe-area-inset-bottom,0px));
-  width:52px; height:52px; border-radius:50%; background:var(--amber); color:#1a1410;
-  font-size:26px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,.35);
+.back-fab{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:calc(70px + env(safe-area-inset-bottom,0px));
+  width:calc(100% - 32px);
+  max-width:448px;
+  z-index:10;
+  margin:0;
 }
+.back-fab.hidden{display:none;}
 input,textarea,select{
   width:100%; padding:11px 12px; border-radius:8px; border:1px solid var(--line);
   background:var(--bg); color:var(--text); font-size:16px; margin-bottom:10px; font-family:inherit;
+}
+input,textarea{ -webkit-appearance:none; appearance:none; }
+textarea{
+  resize:none;
+  line-height:1.45;
+  min-height:44px;
+  overflow:hidden;
 }
 label{font-size:12px; color:var(--dim); display:block; margin-bottom:5px; margin-top:2px;}
 .row2{display:flex; gap:8px;}
@@ -76,13 +117,18 @@ label{font-size:12px; color:var(--dim); display:block; margin-bottom:5px; margin
 .seg button{flex:1; padding:9px 0; background:var(--bg); color:var(--dim); font-size:13px; font-weight:600;}
 .seg button.on{background:var(--amber-dim); color:var(--amber);}
 .entry{border-left:2px solid var(--amber); padding:10px 12px; margin-bottom:10px; background:var(--bg2); border-radius:0 8px 8px 0;}
-.entry .top{display:flex; justify-content:space-between; font-size:13px; color:var(--dim); margin-bottom:4px;}
-.entry .odo{font-family:var(--mono); color:var(--amber); font-weight:600;}
-.entry .work{font-size:15px; font-weight:600; margin-bottom:6px;}
-.entry .part{font-size:13px; color:var(--dim); display:flex; justify-content:space-between; padding:2px 0;}
-.entry .part .art{font-family:var(--mono); color:var(--text);}
-.entry .actions{display:flex; gap:16px; margin-top:8px;}
-.entry .actions a{font-size:12px; color:var(--dim); text-decoration:underline;}
+.entry .top{display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--dim); margin-bottom:4px; gap:8px;}
+.entry .top .odo{font-family:var(--mono); color:var(--amber); font-weight:600; flex:1; text-align:right;}
+.entry .top .edit-btn{
+  width:30px; height:30px; border-radius:7px; display:flex; align-items:center; justify-content:center;
+  color:var(--dim); font-size:15px; flex-shrink:0; background:transparent; opacity:.6;
+  transition:opacity .15s, color .15s;
+}
+.entry .top .edit-btn:active{background:transparent; color:var(--amber); opacity:1;}
+.entry .work{font-size:15px; font-weight:600; margin-bottom:6px; white-space:pre-wrap; word-break:break-word;}
+.entry .note{font-size:13px; color:var(--dim); font-style:italic; margin-top:6px; white-space:pre-wrap; word-break:break-word;}
+.entry .part{font-size:13px; color:var(--dim); display:flex; justify-content:space-between; padding:2px 0; gap:8px;}
+.entry .part .art{font-family:var(--mono); color:var(--text); text-align:right;}
 .partfield{border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; position:relative;}
 .pf-wrap{position:relative;}
 .pf-dropdown{position:absolute; left:0; right:0; top:100%; margin-top:2px; background:var(--bg2); border:1px solid var(--line); border-radius:8px; max-height:180px; overflow-y:auto; z-index:20; display:none;}
@@ -111,40 +157,39 @@ nav button.on{color:var(--amber);}
 <header>
   <h1 id="hdrTitle">Гараж</h1>
   <span class="crumb" id="hdrCrumb"></span>
+  <button class="header-sort hidden" id="hdrSort" data-action="toggleSort" aria-label="Переключить сортировку"><span id="hdrSortIcon">↓</span></button>
 </header>
 
-<main>
+<main id="main">
 
-  <!-- CARS LIST -->
   <section class="screen active" id="s-cars">
     <div class="card" id="carsCard"></div>
-    <button class="btn" onclick="showAddCar()">+ Добавить автомобиль</button>
+    <button class="btn" data-action="showAddCar">+ Добавить автомобиль</button>
+    <div class="storage-status" id="storageStatus"></div>
   </section>
 
-  <!-- CAR MENU -->
   <section class="screen" id="s-carMenu">
     <div class="card">
-      <div class="list-row" onclick="go('history')"><div><div class="t">Просмотреть историю обслуживания</div></div><div class="arrow">›</div></div>
-      <div class="list-row" onclick="go('addEntry')"><div><div class="t">Добавить данные</div></div><div class="arrow">›</div></div>
-      <div class="list-row" onclick="go('editList')"><div><div class="t">Изменить данные</div></div><div class="arrow">›</div></div>
+      <div class="list-row" data-action="go" data-where="history">
+        <div class="main"><div class="t">Просмотреть историю обслуживания</div></div>
+        <div class="arrow">›</div>
+      </div>
+      <div class="list-row" data-action="go" data-where="addEntry">
+        <div class="main"><div class="t">Добавить данные</div></div>
+        <div class="arrow">›</div>
+      </div>
     </div>
-    <button class="btn danger" onclick="deleteCar()">Удалить автомобиль</button>
+    <button class="btn danger" data-action="deleteCar">Удалить автомобиль</button>
   </section>
 
-  <!-- HISTORY -->
   <section class="screen" id="s-history"></section>
-
-  <!-- ADD/EDIT ENTRY -->
   <section class="screen" id="s-entryForm"></section>
+  <section class="screen" id="s-renameCar"></section>
 
-  <!-- EDIT LIST -->
-  <section class="screen" id="s-editList"></section>
-
-  <!-- PARTS -->
   <section class="screen" id="s-parts">
-    <div class="searchbox"><input id="partSearch" placeholder="Поиск по названию или артикулу" oninput="renderParts()"></div>
+    <div class="searchbox"><input id="partSearch" placeholder="Поиск по названию или артикулу"></div>
     <div class="card" id="partsCard"></div>
-    <button class="btn" onclick="showAddPart()">+ Добавить запчасть</button>
+    <button class="btn" data-action="showAddPart">+ Добавить запчасть</button>
   </section>
 
   <section class="screen" id="s-addPart"></section>
@@ -153,883 +198,1279 @@ nav button.on{color:var(--amber);}
 </main>
 
 <nav>
-  <button id="navCars" class="on" onclick="switchTab('cars')"><span class="ic">🚗</span>Автомобили</button>
-  <button id="navParts" onclick="switchTab('parts')"><span class="ic">🔧</span>Запчасти</button>
+  <button id="navCars" class="on" data-action="switchTab" data-tab="cars"><span class="ic">🚗</span>Автомобили</button>
+  <button id="navParts" data-action="switchTab" data-tab="parts"><span class="ic">🔧</span>Запчасти</button>
 </nav>
+
+<button class="btn secondary back-fab hidden" id="backFab" data-action="backToCar">‹ К автомобилю</button>
 </div>
 
 <script>
 'use strict';
 
-/* ---------- Telegram / storage ---------- */
-const tg = () => window.Telegram?.WebApp || null;
-try {
-  const app = tg();
-  if (app) {
-    app.ready();
-    app.expand();
-  }
-} catch (e) {
-  console.warn('Telegram WebApp init failed:', e);
-}
-
-function cloudStorage(){ return tg()?.CloudStorage || null; }
-function tgReady(){ return !!cloudStorage(); }
-function delay(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
-
-let cloudWorks = false;
-let storageWarningShown = false;
-const CHUNK = 3800;
-const persistQueues = new Map();
-
-function csSetItem(key, value){
-  return new Promise(resolve => {
-    const cs = cloudStorage();
-    if (!cs) return resolve(false);
-    try {
-      cs.setItem(key, value, (err, isStored) => resolve(!err && isStored !== false));
-    } catch (e) {
-      resolve(false);
-    }
-  });
-}
-
-async function csSetItemRetry(key, value, tries = 3){
-  for (let i = 0; i < tries; i++) {
-    if (await csSetItem(key, value)) return true;
-    await delay(200 * (i + 1));
-  }
-  return false;
-}
-
-function csGetItem(key){
-  return new Promise(resolve => {
-    const cs = cloudStorage();
-    if (!cs) return resolve('');
-    try {
-      cs.getItem(key, (err, value) => resolve(err ? '' : String(value ?? '')));
-    } catch (e) {
-      resolve('');
-    }
-  });
-}
-
-function csGetItems(keys){
-  return new Promise(resolve => {
-    if (!keys.length) return resolve({});
-    const cs = cloudStorage();
-    if (!cs) return resolve({});
-    try {
-      cs.getItems(keys, (err, values) => {
-        const source = !err && values && typeof values === 'object' ? values : {};
-        const result = {};
-        keys.forEach(key => { result[key] = String(source[key] ?? ''); });
-        resolve(result);
-      });
-    } catch (e) {
-      resolve({});
-    }
-  });
-}
-
-function csRemoveItems(keys){
-  return new Promise(resolve => {
-    if (!keys.length) return resolve(true);
-    const cs = cloudStorage();
-    if (!cs) return resolve(false);
-    try {
-      cs.removeItems(keys, (err, removed) => resolve(!err && removed !== false));
-    } catch (e) {
-      resolve(false);
-    }
-  });
-}
-
-async function probeCloud(){
-  if (!tgReady()) return false;
-  const key = '__probe';
-  const token = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+/* =========================================================================
+ * Запрет масштабирования
+ * ========================================================================= */
+(function lockZoom(){
   try {
-    if (!(await csSetItemRetry(key, token))) return false;
-    const readBack = await csGetItem(key);
-    await csRemoveItems([key]);
-    return readBack === token;
-  } catch (e) {
-    return false;
-  }
-}
+    document.addEventListener('gesturestart', e => e.preventDefault());
+    document.addEventListener('gesturechange', e => e.preventDefault());
+    document.addEventListener('gestureend', e => e.preventDefault());
+    document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+    document.addEventListener('touchmove', e => {
+      if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+  } catch (_) {}
+})();
 
-const localStore = {
-  get(key, fallback){
-    try {
-      const raw = localStorage.getItem(key);
-      return raw == null ? fallback : (JSON.parse(raw) ?? fallback);
-    } catch (e) {
-      return fallback;
-    }
+/* =========================================================================
+ * Telegram bootstrap
+ * ========================================================================= */
+const TG = (() => {
+  try {
+    const app = window.Telegram?.WebApp || null;
+    if (app) { app.ready(); app.expand(); }
+    return app;
+  } catch (e) {
+    console.warn('Telegram WebApp init failed:', e);
+    return null;
+  }
+})();
+
+const Haptics = {
+  impact(style = 'light') {
+    try { TG?.HapticFeedback?.impactOccurred(style); } catch (_) {}
   },
-  set(key, value){
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-      return true;
-    } catch (e) {
-      return false;
-    }
+  notify(type = 'success') {
+    try { TG?.HapticFeedback?.notificationOccurred(type); } catch (_) {}
   }
 };
 
-function cloneData(value){
-  if (typeof structuredClone === 'function') {
-    try { return structuredClone(value); } catch (e) {}
+const Dialog = {
+  confirm(message, { okText = 'ОК', cancelText = 'Отмена' } = {}) {
+    return new Promise(resolve => {
+      if (TG?.showConfirm) {
+        try { TG.showConfirm(message, ok => resolve(!!ok)); return; } catch (_) {}
+      }
+      resolve(window.confirm(message));
+    });
+  },
+  alert(message) {
+    return new Promise(resolve => {
+      if (TG?.showAlert) {
+        try { TG.showAlert(message, () => resolve()); return; } catch (_) {}
+      }
+      window.alert(message);
+      resolve();
+    });
   }
-  return JSON.parse(JSON.stringify(value));
-}
+};
 
-function makeCloudVersion(){
-  return `v${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
-}
+/* =========================================================================
+ * Settings (persisted)
+ * ========================================================================= */
+const Settings = (() => {
+  const KEY = 'garage_settings_v1';
+  const defaults = { sortOrder: 'desc' };
 
-function parseCloudMeta(raw){
-  if (!raw) return null;
-  try {
-    const meta = JSON.parse(raw);
-    if (!meta || typeof meta.version !== 'string' || !Number.isInteger(meta.n) || meta.n < 1) return null;
-    return meta;
-  } catch (e) {
-    return null;
+  let state = { ...defaults };
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) Object.assign(state, JSON.parse(raw));
+    } catch (_) {}
+    return state;
   }
-}
-
-async function readChunked(keys){
-  const values = await csGetItems(keys);
-  if (keys.some(key => values[key] === '')) return { ok:false, data:null };
-  try {
-    return { ok:true, data:JSON.parse(keys.map(key => values[key]).join('')) };
-  } catch (e) {
-    return { ok:false, data:null };
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {}
   }
-}
+  function get(k) { return state[k]; }
+  function set(k, v) { state[k] = v; save(); }
 
-async function loadCloud(name){
-  const meta = parseCloudMeta(await csGetItem(`${name}_meta`));
-  if (meta) {
-    const keys = Array.from({length: meta.n}, (_, i) => `${name}_${meta.version}_${i}`);
-    const result = await readChunked(keys);
-    if (result.ok) return result;
+  return { load, get, set, get state() { return state; } };
+})();
+
+/* =========================================================================
+ * Storage module
+ * ========================================================================= */
+const Storage = (() => {
+  const CHUNK = 3800;
+  const queues = new Map();
+  let cloudAvailable = false;
+  let warningShown = false;
+
+  const cs = () => TG?.CloudStorage || null;
+  const hasCloud = () => !!cs();
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  function csSetItem(key, value) {
+    return new Promise(resolve => {
+      const c = cs();
+      if (!c) return resolve(false);
+      try { c.setItem(key, value, (err, ok) => resolve(!err && ok !== false)); }
+      catch (_) { resolve(false); }
+    });
+  }
+  async function csSetItemRetry(key, value, tries = 3) {
+    for (let i = 0; i < tries; i++) {
+      if (await csSetItem(key, value)) return true;
+      await delay(200 * (i + 1));
+    }
+    return false;
+  }
+  function csGetItem(key) {
+    return new Promise(resolve => {
+      const c = cs();
+      if (!c) return resolve('');
+      try { c.getItem(key, (err, v) => resolve(err ? '' : String(v ?? ''))); }
+      catch (_) { resolve(''); }
+    });
+  }
+  function csGetItems(keys) {
+    return new Promise(resolve => {
+      if (!keys.length) return resolve({});
+      const c = cs();
+      if (!c) return resolve({});
+      try {
+        c.getItems(keys, (err, values) => {
+          const src = !err && values && typeof values === 'object' ? values : {};
+          const out = {};
+          keys.forEach(k => { out[k] = String(src[k] ?? ''); });
+          resolve(out);
+        });
+      } catch (_) { resolve({}); }
+    });
+  }
+  function csRemoveItems(keys) {
+    return new Promise(resolve => {
+      if (!keys.length) return resolve(true);
+      const c = cs();
+      if (!c) return resolve(false);
+      try { c.removeItems(keys, (err, ok) => resolve(!err && ok !== false)); }
+      catch (_) { resolve(false); }
+    });
+  }
+  async function csRemoveItemsRetry(keys, tries = 3) {
+    if (!keys.length) return true;
+    for (let i = 0; i < tries; i++) {
+      if (await csRemoveItems(keys)) return true;
+      await delay(200 * (i + 1));
+    }
+    return false;
+  }
+  function csGetKeys() {
+    return new Promise(resolve => {
+      const c = cs();
+      if (!c) return resolve([]);
+      try { c.getKeys((err, keys) => resolve(!err && Array.isArray(keys) ? keys : [])); }
+      catch (_) { resolve([]); }
+    });
   }
 
-  // Backward compatibility with the original storage format.
-  const legacyN = Number.parseInt(await csGetItem(`${name}_n`), 10) || 0;
-  if (legacyN > 0) {
-    const keys = Array.from({length: legacyN}, (_, i) => `${name}_${i}`);
-    const result = await readChunked(keys);
-    if (result.ok) return result;
+  async function probe() {
+    if (!hasCloud()) return false;
+    const key = '__probe';
+    const token = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    try {
+      if (!(await csSetItemRetry(key, token))) return false;
+      const back = await csGetItem(key);
+      await csRemoveItems([key]);
+      return back === token;
+    } catch (_) { return false; }
   }
 
-  return { ok:false, data:null };
-}
+  const local = {
+    get(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw == null ? fallback : (JSON.parse(raw) ?? fallback);
+      } catch (_) { return fallback; }
+    },
+    set(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+      catch (_) { return false; }
+    }
+  };
 
-async function persistCloud(name, dataObj){
-  const str = JSON.stringify(dataObj);
-  const chunks = [];
-  for (let i = 0; i < str.length; i += CHUNK) chunks.push(str.slice(i, i + CHUNK));
-  if (!chunks.length) chunks.push('null');
+  function parseMeta(raw) {
+    if (!raw) return null;
+    try {
+      const m = JSON.parse(raw);
+      if (!m || typeof m.version !== 'string' || !Number.isInteger(m.n) || m.n < 1) return null;
+      return m;
+    } catch (_) { return null; }
+  }
+  function makeVersion() {
+    return `v${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+  }
+  async function readChunked(keys) {
+    const values = await csGetItems(keys);
+    if (keys.some(k => values[k] === '')) return { ok: false, data: null };
+    try { return { ok: true, data: JSON.parse(keys.map(k => values[k]).join('')) }; }
+    catch (_) { return { ok: false, data: null }; }
+  }
+  async function loadCloud(name) {
+    const meta = parseMeta(await csGetItem(`${name}_meta`));
+    if (meta) {
+      const keys = Array.from({ length: meta.n }, (_, i) => `${name}_${meta.version}_${i}`);
+      const r = await readChunked(keys);
+      if (r.ok) return r;
+    }
+    const legacyN = Number.parseInt(await csGetItem(`${name}_n`), 10) || 0;
+    if (legacyN > 0) {
+      const keys = Array.from({ length: legacyN }, (_, i) => `${name}_${i}`);
+      const r = await readChunked(keys);
+      if (r.ok) return r;
+    }
+    return { ok: false, data: null };
+  }
+  async function persistCloud(name, dataObj) {
+    const str = JSON.stringify(dataObj);
+    const chunks = [];
+    for (let i = 0; i < str.length; i += CHUNK) chunks.push(str.slice(i, i + CHUNK));
+    if (!chunks.length) chunks.push('null');
 
-  const previousMeta = parseCloudMeta(await csGetItem(`${name}_meta`));
-  const version = makeCloudVersion();
-  const keys = chunks.map((_, i) => `${name}_${version}_${i}`);
+    const prevMeta = parseMeta(await csGetItem(`${name}_meta`));
+    const version = makeVersion();
+    const keys = chunks.map((_, i) => `${name}_${version}_${i}`);
 
-  for (let i = 0; i < chunks.length; i++) {
-    if (!(await csSetItemRetry(keys[i], chunks[i]))) return false;
+    for (let i = 0; i < chunks.length; i++) {
+      if (!(await csSetItemRetry(keys[i], chunks[i]))) return false;
+    }
+    const meta = JSON.stringify({ version, n: chunks.length, savedAt: Date.now() });
+    if (!(await csSetItemRetry(`${name}_meta`, meta))) return false;
+
+    if (prevMeta) {
+      const oldKeys = Array.from({ length: prevMeta.n }, (_, i) => `${name}_${prevMeta.version}_${i}`);
+      await csRemoveItemsRetry(oldKeys);
+    }
+    const legacyN = Number.parseInt(await csGetItem(`${name}_n`), 10) || 0;
+    if (legacyN > 0) {
+      const legacyKeys = Array.from({ length: legacyN }, (_, i) => `${name}_${i}`);
+      legacyKeys.push(`${name}_n`);
+      await csRemoveItemsRetry(legacyKeys);
+    }
+    return true;
   }
 
-  const meta = JSON.stringify({ version, n: chunks.length, savedAt: Date.now() });
-  if (!(await csSetItemRetry(`${name}_meta`, meta))) return false;
+  /* Удаляет ключи "name_*", оставшиеся от прежних версий (например,
+     после сохранения, при котором не удалось стереть старые чанки).
+     CloudStorage у Telegram ограничен 1024 ключами на пользователя,
+     так что такой "мусор" со временем может забить весь лимит и
+     заблокировать любые новые сохранения. Удаление ключей, в отличие
+     от записи, не требует свободного места, поэтому эту очистку можно
+     выполнять даже когда лимит уже исчерпан. */
+  async function gcOrphans(name) {
+    try {
+      const allKeys = await csGetKeys();
+      const prefix = `${name}_`;
+      const own = allKeys.filter(k => k.startsWith(prefix));
+      if (!own.length) return;
 
-  // Only after the new manifest is committed do we remove old chunks.
-  if (previousMeta) {
-    const oldKeys = Array.from({length: previousMeta.n}, (_, i) => `${name}_${previousMeta.version}_${i}`);
-    await csRemoveItems(oldKeys);
+      const keep = new Set();
+      const meta = parseMeta(await csGetItem(`${name}_meta`));
+      if (meta) {
+        keep.add(`${name}_meta`);
+        for (let i = 0; i < meta.n; i++) keep.add(`${name}_${meta.version}_${i}`);
+      }
+      const legacyN = Number.parseInt(await csGetItem(`${name}_n`), 10) || 0;
+      if (legacyN > 0) {
+        keep.add(`${name}_n`);
+        for (let i = 0; i < legacyN; i++) keep.add(`${name}_${i}`);
+      }
+      const orphans = own.filter(k => !keep.has(k));
+      if (orphans.length) await csRemoveItemsRetry(orphans);
+    } catch (_) {}
   }
 
-  // Remove legacy keys after successful migration.
-  const legacyN = Number.parseInt(await csGetItem(`${name}_n`), 10) || 0;
-  if (legacyN > 0) {
-    const legacyKeys = Array.from({length: legacyN}, (_, i) => `${name}_${i}`);
-    legacyKeys.push(`${name}_n`);
-    await csRemoveItems(legacyKeys);
+  async function init() {
+    if (hasCloud()) {
+      await Promise.allSettled([gcOrphans('cars'), gcOrphans('parts')]);
+    }
+    cloudAvailable = await probe();
+    if (!cloudAvailable) showWarning();
+    return cloudAvailable;
   }
 
-  return true;
-}
+  function persist(name, dataObj) {
+    const snapshot = clone(dataObj);
+    const localSaved = local.set(name, snapshot);
+    if (!localSaved && !cloudAvailable) {
+      showWarning('⚠️ Не удалось сохранить данные ни в облако, ни локально.');
+    }
+    if (!cloudAvailable) return Promise.resolve(localSaved);
 
-function persist(name, dataObj){
-  const snapshot = cloneData(dataObj);
-  const localSaved = localStore.set(name, snapshot);
-  if (!localSaved && !cloudWorks) {
-    showStorageWarning('⚠️ Не удалось сохранить данные ни в облако, ни локально. Не закрывайте приложение и попробуйте снова.');
-  }
-  if (!cloudWorks) return Promise.resolve(localSaved);
-
-  const previous = persistQueues.get(name) || Promise.resolve();
-  const next = previous
-    .catch(() => {})
-    .then(async () => {
+    const prev = queues.get(name) || Promise.resolve();
+    const next = prev.catch(() => {}).then(async () => {
       const ok = await persistCloud(name, snapshot);
-      if (!ok) showStorageWarning('⚠️ Облачная синхронизация временно недоступна. Локальная копия данных сохранена на этом устройстве.');
+      if (!ok) showWarning('⚠️ Облачная синхронизация временно недоступна. Локальная копия сохранена.');
       return ok;
     });
-
-  persistQueues.set(name, next);
-  return next;
-}
-
-async function load(name, fallback){
-  if (cloudWorks) {
-    const cloud = await loadCloud(name);
-    if (cloud.ok) {
-      localStore.set(name, cloud.data);
-      return cloud.data;
-    }
+    queues.set(name, next);
+    return next;
   }
-  return localStore.get(name, fallback);
-}
 
-/* ---------- state ---------- */
-let cars = [];
-let parts = [];
-let curCarId = null;
-let curTab = 'cars';
-let curEntryId = null;
-let entryFormBaseline = null;
+  async function load(name, fallback) {
+    if (cloudAvailable) {
+      const cloud = await loadCloud(name);
+      if (cloud.ok) {
+        local.set(name, cloud.data);
+        return cloud.data;
+      }
+    }
+    return local.get(name, fallback);
+  }
 
-function saveCars(){ return persist('cars', cars); }
-function saveParts(){ return persist('parts', parts); }
+  function showWarning(message = '⚠️ Облачная синхронизация недоступна — данные сохраняются только на этом устройстве.') {
+    if (warningShown) return;
+    warningShown = true;
+    const banner = document.createElement('div');
+    banner.id = 'storageWarning';
+    banner.style.cssText = 'background:#5a4326;color:#e08a2c;font-size:12px;line-height:1.4;padding:8px 14px;text-align:center;';
+    banner.textContent = message;
+    const shell = document.getElementById('shell');
+    shell.insertBefore(banner, shell.querySelector('header').nextSibling);
+  }
 
-function uid(){
+  function clone(value) {
+    if (typeof structuredClone === 'function') {
+      try { return structuredClone(value); } catch (_) {}
+    }
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  /* Сколько ключей CloudStorage занято данными приложения (лимит — 1024 на
+     пользователя у Telegram). Считает только "свои" ключи (с префиксами
+     cars_ и parts_), поэтому число отражает именно то, что ограничивает
+     сохранение новых записей. */
+  async function usage() {
+    if (!hasCloud()) return null;
+    try {
+      const allKeys = await csGetKeys();
+      const used = allKeys.filter(k => k.startsWith('cars_') || k.startsWith('parts_')).length;
+      const max = 1024;
+      return { used, max, remaining: Math.max(0, max - used) };
+    } catch (_) { return null; }
+  }
+
+  return { init, load, persist, usage, chunkSize: CHUNK, isCloud: () => cloudAvailable, hasCloud };
+})();
+
+/* =========================================================================
+ * Migrations
+ * ========================================================================= */
+const Migrations = {
+  CARS_VERSION: 3,
+  PARTS_VERSION: 2,
+
+  run(rawCars, rawParts) {
+    return {
+      cars: this.migrateCars(rawCars),
+      parts: this.migrateParts(rawParts)
+    };
+  },
+
+  migrateCars(value) {
+    if (!Array.isArray(value)) return [];
+    return value
+      .filter(car => car && typeof car === 'object')
+      .map(car => ({
+        schema: this.CARS_VERSION,
+        id: safeId(car.id),
+        name: text(car.name).trim() || 'Без названия',
+        entries: this.migrateEntries(car.entries)
+      }));
+  },
+
+  migrateEntries(value) {
+    if (!Array.isArray(value)) return [];
+    return value
+      .filter(e => e && typeof e === 'object')
+      .map(e => ({
+        schema: this.CARS_VERSION,
+        id: safeId(e.id),
+        date: text(e.date),
+        km: cleanNumber(e.km),
+        mh: cleanNumber(e.mh),
+        work: text(e.work),
+        note: text(e.note),
+        items: this.migrateItems(e.items)
+      }))
+      .filter(e => e.date || e.work);
+  },
+
+  migrateItems(value) {
+    if (!Array.isArray(value)) return [];
+    return value
+      .filter(it => it && typeof it === 'object')
+      .map(it => ({ name: text(it.name).trim(), article: text(it.article).trim() }))
+      .filter(it => it.name);
+  },
+
+  migrateParts(value) {
+    if (!Array.isArray(value)) return [];
+    const seen = new Set();
+    return value
+      .filter(p => p && typeof p === 'object' && text(p.name).trim())
+      .map(p => ({
+        schema: this.PARTS_VERSION,
+        id: safeId(p.id),
+        name: text(p.name).trim(),
+        article: text(p.article).trim()
+      }))
+      .filter(p => {
+        const key = `${p.name.toLowerCase()}|${p.article.toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+};
+
+/* =========================================================================
+ * Store
+ * ========================================================================= */
+const Store = (() => {
+  let cars = [];
+  let parts = [];
+  let curCarId = null;
+  let curEntryId = null;
+  let curTab = 'cars';
+  let entryFormBaseline = null;
+
+  let entriesRev = 0;
+  const sortedCache = new Map();
+
+  const listeners = new Set();
+  function emit() { listeners.forEach(fn => { try { fn(); } catch (e) { console.error(e); } }); }
+  function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+  function bumpRev() { entriesRev++; }
+
+  return {
+    get cars() { return cars; },
+    set cars(v) { cars = v; bumpRev(); emit(); },
+    get parts() { return parts; },
+    set parts(v) { parts = v; emit(); },
+
+    get curCarId() { return curCarId; },
+    set curCarId(v) { curCarId = v; },
+    get curEntryId() { return curEntryId; },
+    set curEntryId(v) { curEntryId = v; },
+    get curTab() { return curTab; },
+    set curTab(v) { curTab = v; },
+    get entryFormBaseline() { return entryFormBaseline; },
+    set entryFormBaseline(v) { entryFormBaseline = v; },
+
+    currentCar() { return cars.find(c => c.id === curCarId) || null; },
+    findPart(id) { return parts.find(p => p.id === id) || null; },
+
+    saveCars() { return Storage.persist('cars', cars); },
+    saveParts() { return Storage.persist('parts', parts); },
+
+    addCar(name) {
+      cars.push({ schema: Migrations.CARS_VERSION, id: uid(), name, entries: [] });
+      bumpRev(); this.saveCars(); emit();
+    },
+    renameCar(id, name) {
+      const car = cars.find(c => c.id === id);
+      if (!car) return false;
+      car.name = name;
+      this.saveCars(); emit();
+      return true;
+    },
+    removeCar(id) {
+      cars = cars.filter(c => c.id !== id);
+      bumpRev(); this.saveCars(); emit();
+    },
+    addEntry(carId, data) {
+      const car = cars.find(c => c.id === carId);
+      if (!car) return false;
+      car.entries.push(data);
+      bumpRev(); this.saveCars(); emit();
+      return true;
+    },
+    updateEntry(carId, entryId, data) {
+      const car = cars.find(c => c.id === carId);
+      if (!car) return false;
+      const i = car.entries.findIndex(e => e.id === entryId);
+      if (i < 0) return false;
+      car.entries[i] = data;
+      bumpRev(); this.saveCars(); emit();
+      return true;
+    },
+    removeEntry(carId, entryId) {
+      const car = cars.find(c => c.id === carId);
+      if (!car) return false;
+      car.entries = car.entries.filter(e => e.id !== entryId);
+      bumpRev(); this.saveCars(); emit();
+      return true;
+    },
+    addPart(part) {
+      parts.push(part); this.saveParts(); emit();
+    },
+    updatePart(id, patch) {
+      const p = parts.find(x => x.id === id);
+      if (!p) return false;
+      Object.assign(p, patch); this.saveParts(); emit();
+      return true;
+    },
+    removePart(id) {
+      parts = parts.filter(p => p.id !== id); this.saveParts(); emit();
+    },
+
+    getSortedEntries(car, order = 'desc') {
+      if (!car) return [];
+      const key = `${car.id}:${entriesRev}:${order}`;
+      const cached = sortedCache.get(key);
+      if (cached) return cached;
+      const dir = order === 'asc' ? 1 : -1;
+      const sorted = [...car.entries].sort((a, b) =>
+        dir * (entryDateValue(a) - entryDateValue(b)) ||
+        dir * (cleanNumber(a.km) - cleanNumber(b.km)) ||
+        dir * (cleanNumber(a.mh) - cleanNumber(b.mh))
+      );
+      sortedCache.set(key, sorted);
+      for (const k of sortedCache.keys()) {
+        if (k.startsWith(`${car.id}:`) && k !== key) {
+          const [, rev] = k.split(':');
+          if (rev !== String(entriesRev)) sortedCache.delete(k);
+        }
+      }
+      return sorted;
+    },
+
+    subscribe,
+    emit
+  };
+})();
+
+/* =========================================================================
+ * Helpers
+ * ========================================================================= */
+function uid() {
   if (window.crypto?.randomUUID) return window.crypto.randomUUID();
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 }
-
-function text(value){ return String(value ?? ''); }
-function safeId(value){
-  const id = text(value);
+function text(v) { return String(v ?? ''); }
+function safeId(v) {
+  const id = text(v);
   return /^[A-Za-z0-9_-]+$/.test(id) ? id : uid();
 }
-function cleanNumber(value){
-  const n = Number(value);
+function cleanNumber(v) {
+  const n = Number(v);
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
-
-function normalizeCars(value){
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter(car => car && typeof car === 'object')
-    .map(car => ({
-      id: safeId(car.id),
-      name: text(car.name).trim() || 'Без названия',
-      entries: Array.isArray(car.entries) ? car.entries
-        .filter(e => e && typeof e === 'object')
-        .map(e => ({
-          id: safeId(e.id),
-          date: text(e.date),
-          km: cleanNumber(e.km),
-          mh: cleanNumber(e.mh),
-          work: text(e.work),
-          items: Array.isArray(e.items) ? e.items
-            .filter(it => it && typeof it === 'object')
-            .map(it => ({ name:text(it.name), article:text(it.article) }))
-            .filter(it => it.name.trim()) : []
-        })) : []
-    }));
+function esc(v) {
+  return text(v).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
 }
-
-function normalizeParts(value){
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter(p => p && typeof p === 'object' && text(p.name).trim())
-    .map(p => ({ id:safeId(p.id), name:text(p.name).trim(), article:text(p.article).trim() }));
-}
-
-/* ---------- navigation ---------- */
-function showScreen(id){
-  const target = document.getElementById(id);
-  if (!target) return;
-  document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
-  target.classList.add('active');
-  const main = document.querySelector('main');
-  if (main) main.scrollTop = 0;
-}
-
-function setHeader(title, crumb = ''){
-  document.getElementById('hdrTitle').textContent = title;
-  document.getElementById('hdrCrumb').textContent = crumb;
-}
-
-function switchTab(tab){
-  guardLeaveEntryForm(() => doSwitchTab(tab));
-}
-
-function doSwitchTab(tab){
-  curTab = tab;
-  document.getElementById('navCars').classList.toggle('on', tab === 'cars');
-  document.getElementById('navParts').classList.toggle('on', tab === 'parts');
-  if (tab === 'cars') {
-    renderCars();
-    showScreen('s-cars');
-    setHeader('Гараж');
-  } else {
-    renderParts();
-    showScreen('s-parts');
-    setHeader('Запчасти');
-  }
-}
-
-function readEntryFormState(){
-  const dateEl = document.getElementById('f-date');
-  if (!dateEl) return null;
-  return {
-    date: dateEl.value,
-    km: document.getElementById('f-km')?.value ?? '',
-    mh: document.getElementById('f-mh')?.value ?? '',
-    work: document.getElementById('f-work')?.value.trim() ?? '',
-    items: [...document.querySelectorAll('#partsFields .partfield')].map(field => ({
-      name: field.querySelector('.pf-name')?.value.trim() ?? '',
-      article: field.querySelector('.pf-art')?.value.trim() ?? ''
-    }))
-  };
-}
-
-function serializeEntryForm(){
-  const state = readEntryFormState();
-  return state ? JSON.stringify(state) : null;
-}
-
-function isEntryFormDirty(){
-  const screen = document.getElementById('s-entryForm');
-  if (!screen.classList.contains('active') || entryFormBaseline == null) return false;
-  return serializeEntryForm() !== entryFormBaseline;
-}
-
-function guardLeaveEntryForm(afterFn){
-  if (!isEntryFormDirty()) {
-    afterFn();
-    return;
-  }
-
-  const wantsSave = confirm('Вы не сохранили изменения.\n\nОК — сохранить и выйти\nОтмена — выйти без сохранения');
-  if (wantsSave) {
-    const ok = saveEntry(true);
-    if (!ok) {
-      const discard = confirm('Чтобы сохранить, нужно указать дату и вид работы.\nВыйти без сохранения?');
-      if (!discard) return;
-    }
-  }
-
-  entryFormBaseline = null;
-  afterFn();
-}
-
-/* ---------- cars ---------- */
-function renderCars(){
-  const card = document.getElementById('carsCard');
-  if (!cars.length) {
-    card.innerHTML = '<div class="empty">Пока нет ни одного автомобиля.<br>Добавьте первый, чтобы вести историю обслуживания.</div>';
-    return;
-  }
-
-  card.innerHTML = cars.map(car => {
-    const latest = latestEntry(car);
-    const sub = latest ? `${esc(latest.date)} · ${odoLabel(latest)}` : 'Нет записей';
-    return `<div class="list-row" onclick="openCar('${car.id}')">
-      <div><div class="t">${esc(car.name)}</div><div class="s">${sub}</div></div>
-      <div class="arrow">›</div></div>`;
-  }).join('');
-}
-
-function showAddCar(){
-  document.getElementById('s-addCar').innerHTML = `
-    <label>Название автомобиля</label>
-    <input id="newCarName" placeholder="Например: Хонда СБР 600" autocomplete="off">
-    <button class="btn" onclick="addCar()">Сохранить</button>
-    <button class="btn secondary" onclick="doSwitchTab('cars')">Отмена</button>`;
-  showScreen('s-addCar');
-  setHeader('Новый автомобиль');
-  setTimeout(() => document.getElementById('newCarName')?.focus(), 0);
-}
-
-function addCar(){
-  const input = document.getElementById('newCarName');
-  const name = input?.value.trim() || '';
-  if (!name) {
-    input?.focus();
-    return;
-  }
-  cars.push({ id:uid(), name, entries:[] });
-  saveCars();
-  doSwitchTab('cars');
-}
-
-function openCar(id){
-  const car = cars.find(item => item.id === id);
-  if (!car) {
-    doSwitchTab('cars');
-    return;
-  }
-  curCarId = id;
-  showScreen('s-carMenu');
-  setHeader(car.name, 'Автомобиль');
-}
-
-function deleteCar(){
-  const car = currentCar();
-  if (!car) return doSwitchTab('cars');
-  if (!confirm(`Удалить «${car.name}» и всю его историю?`)) return;
-  cars = cars.filter(item => item.id !== curCarId);
-  curCarId = null;
-  saveCars();
-  doSwitchTab('cars');
-}
-
-function currentCar(){ return cars.find(car => car.id === curCarId) || null; }
-
-function go(where){
-  if (where === 'history') renderHistory();
-  else if (where === 'addEntry') showEntryForm(null);
-  else if (where === 'editList') renderEditList();
-}
-
-function backToCar(){
-  const car = currentCar();
-  if (!car) return doSwitchTab('cars');
-  showScreen('s-carMenu');
-  setHeader(car.name, 'Автомобиль');
-}
-
-/* ---------- history ---------- */
-function entryDateValue(entry){
+function entryDateValue(entry) {
   const iso = toInputDate(entry?.date || '');
   const time = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? Date.parse(`${iso}T00:00:00`) : NaN;
   return Number.isFinite(time) ? time : 0;
 }
-
-function sortEntries(entries){
-  return [...entries].sort((a, b) =>
-    entryDateValue(b) - entryDateValue(a) ||
-    cleanNumber(b.km) - cleanNumber(a.km) ||
-    cleanNumber(b.mh) - cleanNumber(a.mh)
-  );
-}
-
-function renderHistory(){
-  const car = currentCar();
-  if (!car) return doSwitchTab('cars');
-
-  const box = document.getElementById('s-history');
-  const sorted = sortEntries(car.entries);
-  box.innerHTML = sorted.length
-    ? sorted.map(entry => `
-        <div class="entry">
-          <div class="top"><span>${esc(entry.date)}</span><span class="odo">${odoLabel(entry)}</span></div>
-          <div class="work">${esc(entry.work)}</div>
-          ${(entry.items || []).map(item => `<div class="part"><span>${esc(item.name)}</span><span class="art">${esc(item.article || '')}</span></div>`).join('')}
-        </div>`).join('')
-    : '<div class="empty">Записей пока нет.</div>';
-
-  box.innerHTML += '<button class="btn secondary" onclick="backToCar()">‹ К автомобилю</button>';
-  showScreen('s-history');
-  setHeader(car.name, 'История');
-}
-
-/* ---------- edit list ---------- */
-function renderEditList(){
-  const car = currentCar();
-  if (!car) return doSwitchTab('cars');
-
-  const box = document.getElementById('s-editList');
-  const sorted = sortEntries(car.entries);
-  box.innerHTML = sorted.length
-    ? '<div class="card">' + sorted.map(entry => `
-        <div class="list-row" onclick="showEntryForm('${entry.id}')">
-          <div><div class="t">${esc(entry.date)} — ${esc(entry.work)}</div><div class="s">${odoLabel(entry)}</div></div>
-          <div class="arrow">›</div></div>`).join('') + '</div>'
-    : '<div class="empty">Нет записей для изменения.</div>';
-
-  box.innerHTML += '<button class="btn secondary" onclick="backToCar()">‹ К автомобилю</button>';
-  showScreen('s-editList');
-  setHeader(car.name, 'Изменить данные');
-}
-
-/* ---------- entry form ---------- */
-function showEntryForm(entryId){
-  const car = currentCar();
-  if (!car) return doSwitchTab('cars');
-
-  curEntryId = entryId || null;
-  const entry = entryId ? car.entries.find(item => item.id === entryId) : null;
-  if (entryId && !entry) return renderEditList();
-
-  const data = entry || { date:'', km:'', mh:'', work:'', items:[{name:'', article:''}] };
-  const box = document.getElementById('s-entryForm');
-  box.innerHTML = `
-    <label>Дата</label>
-    <input type="date" id="f-date" value="${escAttr(toInputDate(data.date))}">
-    <div class="row2">
-      <div><label>Пробег, км</label><input id="f-km" type="number" min="0" step="any" inputmode="decimal" placeholder="—" value="${data.km || ''}"></div>
-      <div><label>Мото-часы</label><input id="f-mh" type="number" min="0" step="any" inputmode="decimal" placeholder="—" value="${data.mh || ''}"></div>
-    </div>
-    <label>Вид работы</label>
-    <input id="f-work" placeholder="Например: Замена фильтров и масла" value="${escAttr(data.work)}">
-    <label>Запчасти</label>
-    <div id="partsFields"></div>
-    <button type="button" class="addline" onclick="addPartField()">+ ещё запчасть</button>
-    <button class="btn" onclick="saveEntry()">Сохранить запись</button>
-    ${entryId ? '<button class="btn danger" onclick="deleteEntry()">Удалить запись</button>' : ''}
-    <button class="btn secondary" onclick="cancelEntryForm()">Отмена</button>`;
-
-  const items = data.items?.length ? data.items : [{name:'', article:''}];
-  items.forEach(item => addPartField(item.name, item.article));
-
-  showScreen('s-entryForm');
-  setHeader(car.name, entryId ? 'Изменить запись' : 'Новая запись');
-  entryFormBaseline = serializeEntryForm();
-}
-
-function addPartField(name = '', article = ''){
-  const container = document.getElementById('partsFields');
-  if (!container) return;
-
-  const wrap = document.createElement('div');
-  wrap.className = 'partfield';
-  wrap.innerHTML = `
-    <button type="button" class="rm" aria-label="Удалить строку запчасти" onclick="this.parentElement.remove()">×</button>
-    <label>Название</label>
-    <div class="pf-wrap">
-      <input class="pf-name" value="${escAttr(name)}" placeholder="Название запчасти/расходника" autocomplete="off">
-      <div class="pf-dropdown"></div>
-    </div>
-    <label>Артикул</label><input class="pf-art" value="${escAttr(article)}" placeholder="Артикул" autocomplete="off">
-    <div class="pf-addsuggest"></div>`;
-  container.appendChild(wrap);
-
-  const nameInput = wrap.querySelector('.pf-name');
-  const artInput = wrap.querySelector('.pf-art');
-  const dropdown = wrap.querySelector('.pf-dropdown');
-  const addBox = wrap.querySelector('.pf-addsuggest');
-
-  function refresh(){
-    const query = nameInput.value.trim().toLowerCase();
-    if (!query) {
-      dropdown.style.display = 'none';
-      dropdown.innerHTML = '';
-      addBox.style.display = 'none';
-      addBox.textContent = '';
-      return;
-    }
-
-    const matches = parts.filter(part =>
-      part.name.toLowerCase().includes(query) || (part.article || '').toLowerCase().includes(query)
-    );
-
-    if (matches.length) {
-      dropdown.innerHTML = matches.slice(0, 6).map(part =>
-        `<div class="pf-opt" data-id="${part.id}">${esc(part.name)}${part.article ? ` <span class="art">${esc(part.article)}</span>` : ''}</div>`
-      ).join('');
-      dropdown.style.display = 'block';
-    } else {
-      dropdown.style.display = 'none';
-      dropdown.innerHTML = '';
-    }
-
-    refreshAddBox();
-  }
-
-  function refreshAddBox(){
-    const nameValue = nameInput.value.trim();
-    const articleValue = artInput.value.trim();
-    const exact = parts.some(part =>
-      part.name.trim().toLowerCase() === nameValue.toLowerCase() &&
-      (part.article || '').trim().toLowerCase() === articleValue.toLowerCase()
-    );
-
-    if (nameValue && articleValue && !exact) {
-      addBox.textContent = `+ добавить «${nameValue}» в каталог запчастей`;
-      addBox.style.display = 'block';
-    } else {
-      addBox.style.display = 'none';
-      addBox.textContent = '';
-    }
-  }
-
-  nameInput.addEventListener('input', refresh);
-  nameInput.addEventListener('focus', refresh);
-  nameInput.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 150));
-  artInput.addEventListener('input', refreshAddBox);
-
-  dropdown.addEventListener('click', event => {
-    const option = event.target.closest('.pf-opt');
-    if (!option) return;
-    const part = parts.find(item => item.id === option.dataset.id);
-    if (!part) return;
-    nameInput.value = part.name;
-    artInput.value = part.article || '';
-    dropdown.style.display = 'none';
-    dropdown.innerHTML = '';
-    addBox.style.display = 'none';
-    addBox.textContent = '';
-  });
-
-  addBox.addEventListener('click', () => {
-    const partName = nameInput.value.trim();
-    const partArticle = artInput.value.trim();
-    if (!partName || !partArticle) return;
-
-    const duplicate = parts.some(part =>
-      part.name.toLowerCase() === partName.toLowerCase() &&
-      (part.article || '').toLowerCase() === partArticle.toLowerCase()
-    );
-    if (!duplicate) {
-      parts.push({ id:uid(), name:partName, article:partArticle });
-      saveParts();
-    }
-
-    addBox.textContent = duplicate ? '✓ уже есть в каталоге' : '✓ добавлено в каталог запчастей';
-    setTimeout(() => {
-      addBox.style.display = 'none';
-      addBox.textContent = '';
-    }, 1200);
-  });
-}
-
-function readNonNegativeNumber(id, label){
-  const input = document.getElementById(id);
-  const raw = input?.value.trim() || '';
-  if (!raw) return 0;
-  const value = Number(raw);
-  if (!Number.isFinite(value) || value < 0) {
-    alert(`${label} должен быть неотрицательным числом`);
-    input?.focus();
-    return null;
-  }
-  return value;
-}
-
-function saveEntry(skipNav = false){
-  const car = currentCar();
-  if (!car) return false;
-
-  const date = document.getElementById('f-date')?.value || '';
-  const km = readNonNegativeNumber('f-km', 'Пробег');
-  if (km == null) return false;
-  const mh = readNonNegativeNumber('f-mh', 'Мото-часы');
-  if (mh == null) return false;
-  const work = document.getElementById('f-work')?.value.trim() || '';
-
-  if (!date || !work) {
-    alert('Укажите дату и вид работы');
-    return false;
-  }
-
-  const items = [...document.querySelectorAll('#partsFields .partfield')]
-    .map(field => ({
-      name: field.querySelector('.pf-name')?.value.trim() || '',
-      article: field.querySelector('.pf-art')?.value.trim() || ''
-    }))
-    .filter(item => item.name);
-
-  const data = {
-    id: curEntryId || uid(),
-    date: fromInputDate(date),
-    km,
-    mh,
-    work,
-    items
-  };
-
-  if (curEntryId) {
-    const index = car.entries.findIndex(entry => entry.id === curEntryId);
-    if (index < 0) {
-      alert('Не удалось найти запись для изменения');
-      return false;
-    }
-    car.entries[index] = data;
-  } else {
-    car.entries.push(data);
-    curEntryId = data.id;
-  }
-
-  saveCars();
-  entryFormBaseline = serializeEntryForm();
-
-  if (!skipNav) {
-    entryFormBaseline = null;
-    backToCar();
-  }
-  return true;
-}
-
-function deleteEntry(){
-  const car = currentCar();
-  if (!car || !curEntryId) return;
-  if (!confirm('Удалить эту запись?')) return;
-  car.entries = car.entries.filter(entry => entry.id !== curEntryId);
-  curEntryId = null;
-  entryFormBaseline = null;
-  saveCars();
-  renderEditList();
-}
-
-function cancelEntryForm(){
-  entryFormBaseline = null;
-  curEntryId = null;
-  backToCar();
-}
-
-/* ---------- parts catalog ---------- */
-function renderParts(){
-  const search = document.getElementById('partSearch');
-  const query = (search?.value || '').trim().toLowerCase();
-  const filtered = parts.filter(part =>
-    part.name.toLowerCase().includes(query) || (part.article || '').toLowerCase().includes(query)
-  );
-
-  const card = document.getElementById('partsCard');
-  if (!parts.length) {
-    card.innerHTML = '<div class="empty">Каталог пуст. Добавьте первую запчасть.</div>';
-    return;
-  }
-  if (!filtered.length) {
-    card.innerHTML = '<div class="empty">Ничего не найдено.</div>';
-    return;
-  }
-
-  card.innerHTML = filtered.map(part => `
-    <div class="list-row" onclick="editPart('${part.id}')">
-      <div><div class="t">${esc(part.name)}</div><div class="s">${esc(part.article || '—')}</div></div>
-      <div class="arrow">›</div></div>`).join('');
-}
-
-function showAddPart(id = null){
-  const part = id ? parts.find(item => item.id === id) : null;
-  if (id && !part) return doSwitchTab('parts');
-
-  window.__editPartId = id || null;
-  const data = part || { name:'', article:'' };
-  document.getElementById('s-addPart').innerHTML = `
-    <label>Название</label><input id="p-name" value="${escAttr(data.name)}" placeholder="Название запчасти" autocomplete="off">
-    <label>Артикул</label><input id="p-art" value="${escAttr(data.article)}" placeholder="Артикул" autocomplete="off">
-    <button class="btn" onclick="savePart()">Сохранить</button>
-    ${id ? '<button class="btn danger" onclick="delPart()">Удалить</button>' : ''}
-    <button class="btn secondary" onclick="doSwitchTab('parts')">Отмена</button>`;
-  showScreen('s-addPart');
-  setHeader(id ? 'Изменить запчасть' : 'Новая запчасть');
-}
-
-function editPart(id){ showAddPart(id); }
-
-function savePart(){
-  const nameInput = document.getElementById('p-name');
-  const name = nameInput?.value.trim() || '';
-  const article = document.getElementById('p-art')?.value.trim() || '';
-
-  if (!name) {
-    nameInput?.focus();
-    return;
-  }
-  if (!article && !confirm('Вы забыли внести артикул. Сохранить без артикула?')) return;
-
-  const editId = window.__editPartId || null;
-  const duplicate = parts.some(part =>
-    part.id !== editId &&
-    part.name.toLowerCase() === name.toLowerCase() &&
-    (part.article || '').toLowerCase() === article.toLowerCase()
-  );
-  if (duplicate) {
-    alert('Такая запчасть уже есть в каталоге');
-    return;
-  }
-
-  if (editId) {
-    const part = parts.find(item => item.id === editId);
-    if (!part) return doSwitchTab('parts');
-    part.name = name;
-    part.article = article;
-  } else {
-    parts.push({ id:uid(), name, article });
-  }
-
-  saveParts();
-  doSwitchTab('parts');
-}
-
-function delPart(){
-  const id = window.__editPartId || null;
-  if (!id) return;
-  if (!confirm('Удалить запчасть из каталога?')) return;
-  parts = parts.filter(part => part.id !== id);
-  window.__editPartId = null;
-  saveParts();
-  doSwitchTab('parts');
-}
-
-/* ---------- helpers ---------- */
-function odoLabel(entry){
+function odoLabel(entry) {
   const labels = [];
   if (cleanNumber(entry?.km)) labels.push(`${cleanNumber(entry.km)} км`);
   if (cleanNumber(entry?.mh)) labels.push(`${cleanNumber(entry.mh)} м.ч.`);
   return labels.length ? labels.join(' · ') : '—';
 }
-
-function latestEntry(car){
-  if (!car?.entries?.length) return null;
-  return sortEntries(car.entries)[0] || null;
+function toInputDate(value) {
+  const d = text(value);
+  if (!d) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  const m = d.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+}
+function fromInputDate(value) {
+  const m = text(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : '';
+}
+function debounce(fn, ms = 200) {
+  let t = null;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
+}
+function autoGrow(el) {
+  if (!el || el.tagName !== 'TEXTAREA') return;
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+function bindAutoGrow(el) {
+  if (!el) return;
+  autoGrow(el);
+  el.addEventListener('input', () => autoGrow(el));
+}
+function formatNumber(n) {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
-function esc(value){
-  return text(value).replace(/[&<>"']/g, char => ({
-    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
-  }[char]));
+/* =========================================================================
+ * Router
+ * ========================================================================= */
+const Router = (() => {
+  let current = 's-cars';
+  const FAB_SCREENS = new Set(['s-history']);
+  const SORT_SCREENS = new Set(['s-history']);
+
+  function show(id) {
+    const target = document.getElementById(id);
+    if (!target) return;
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    target.classList.add('active');
+    const main = document.getElementById('main');
+    if (main) main.scrollTop = 0;
+    current = id;
+
+    const fab = document.getElementById('backFab');
+    if (fab) fab.classList.toggle('hidden', !FAB_SCREENS.has(id));
+
+    const sortBtn = document.getElementById('hdrSort');
+    if (sortBtn) sortBtn.classList.toggle('hidden', !SORT_SCREENS.has(id));
+  }
+
+  function setHeader(title, crumb = '') {
+    document.getElementById('hdrTitle').textContent = title;
+    document.getElementById('hdrCrumb').textContent = crumb;
+  }
+
+  function switchTab(tab) {
+    Store.curTab = tab;
+    document.getElementById('navCars').classList.toggle('on', tab === 'cars');
+    document.getElementById('navParts').classList.toggle('on', tab === 'parts');
+    if (tab === 'cars') {
+      Views.renderCars();
+      show('s-cars');
+      setHeader('Гараж');
+    } else {
+      Views.renderParts();
+      show('s-parts');
+      setHeader('Запчасти');
+    }
+  }
+
+  return { show, setHeader, switchTab, get current() { return current; } };
+})();
+
+/* =========================================================================
+ * Views
+ * ========================================================================= */
+const Views = (() => {
+
+  /* ---------- Cars list ---------- */
+  function renderCars() {
+    renderStorageStatus();
+    const card = document.getElementById('carsCard');
+    const cars = Store.cars;
+    if (!cars.length) {
+      card.innerHTML = '<div class="empty">Пока нет ни одного автомобиля.<br>Добавьте первый, чтобы вести историю обслуживания.</div>';
+      return;
+    }
+    const order = Settings.get('sortOrder');
+    card.innerHTML = cars.map(car => {
+      const sorted = Store.getSortedEntries(car, order);
+      const latest = sorted[0];
+
+      /* Дата и км — из последней записи (как раньше). */
+      const datePart = latest ? esc(latest.date) : '';
+      const kmPart = latest && cleanNumber(latest.km) ? `${formatNumber(cleanNumber(latest.km))} км` : '';
+
+      /* М.ч. — из самой свежей записи, где они заполнены. */
+      const lastMh = latestMh(car, order);
+      const mhPart = lastMh ? `${formatNumber(cleanNumber(lastMh.mh))} м.ч.` : '';
+
+      const summaryParts = [datePart, kmPart, mhPart].filter(Boolean);
+      const sub = summaryParts.length ? summaryParts.join(' · ') : 'Нет записей';
+
+      return `<div class="list-row" data-action="openCar" data-id="${esc(car.id)}">
+        <div class="main"><div class="t">${esc(car.name)}</div><div class="s">${sub}</div></div>
+        <div class="row-actions">
+          <button class="icon-btn" data-action="renameCar" data-id="${esc(car.id)}" aria-label="Переименовать">✏️</button>
+          <div class="arrow">›</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  /* Последняя запись (по выбранному порядку), где заполнены м.ч. */
+  function latestMh(car, order) {
+    if (!car) return null;
+    const sorted = Store.getSortedEntries(car, order);
+    return sorted.find(e => cleanNumber(e.mh) > 0) || null;
+  }
+
+  /* ---------- Storage status ---------- */
+  async function renderStorageStatus() {
+    const el = document.getElementById('storageStatus');
+    if (!el) return;
+    if (!Storage.hasCloud()) {
+      el.textContent = '';
+      el.className = 'storage-status';
+      return;
+    }
+    const u = await Storage.usage();
+    if (!u) { el.textContent = ''; el.className = 'storage-status'; return; }
+
+    const pct = Math.round((u.used / u.max) * 100);
+    let text = `Облако: занято ${u.used} из ${u.max} ключей (${pct}%)`;
+
+    const allEntries = Store.cars.flatMap(c => c.entries || []);
+    if (allEntries.length) {
+      const avgLen = allEntries.reduce((sum, e) => sum + JSON.stringify(e).length, 0) / allEntries.length;
+      if (avgLen > 0) {
+        const estimate = Math.floor((u.remaining * Storage.chunkSize) / avgLen);
+        text += ` · осталось места примерно на ${formatNumber(estimate)} записей`;
+      }
+    }
+
+    el.textContent = text;
+    el.className = 'storage-status' + (u.remaining < 30 ? ' danger' : u.remaining < 100 ? ' warn' : '');
+  }
+
+  /* ---------- Add car ---------- */
+  function showAddCar() {
+    document.getElementById('s-addCar').innerHTML = `
+      <label>Название автомобиля</label>
+      <input id="newCarName" placeholder="Например: Хонда СБР 600" autocomplete="off">
+      <button class="btn" data-action="addCar">Сохранить</button>
+      <button class="btn secondary" data-action="switchTab" data-tab="cars">Отмена</button>`;
+    Router.show('s-addCar');
+    Router.setHeader('Новый автомобиль');
+    setTimeout(() => document.getElementById('newCarName')?.focus(), 0);
+  }
+
+  function addCar() {
+    const input = document.getElementById('newCarName');
+    const name = input?.value.trim() || '';
+    if (!name) { input?.focus(); return; }
+    Store.addCar(name);
+    Haptics.notify('success');
+    Router.switchTab('cars');
+  }
+
+  /* ---------- Rename car ---------- */
+  function showRenameCar(id) {
+    const car = Store.cars.find(c => c.id === id);
+    if (!car) return Router.switchTab('cars');
+    document.getElementById('s-renameCar').innerHTML = `
+      <label>Новое название</label>
+      <input id="renameCarName" value="${esc(car.name)}" autocomplete="off">
+      <button class="btn" data-action="saveRenameCar" data-id="${esc(id)}">Сохранить</button>
+      <button class="btn secondary" data-action="backToCarMenu">Отмена</button>`;
+    Router.show('s-renameCar');
+    Router.setHeader('Переименовать', 'Автомобиль');
+    setTimeout(() => {
+      const el = document.getElementById('renameCarName');
+      el?.focus();
+      el?.setSelectionRange(el.value.length, el.value.length);
+    }, 0);
+  }
+
+  function saveRenameCar(id) {
+    const input = document.getElementById('renameCarName');
+    const name = input?.value.trim() || '';
+    if (!name) { input?.focus(); return; }
+    Store.renameCar(id, name);
+    Haptics.notify('success');
+    Router.switchTab('cars');
+  }
+
+  /* ---------- Car menu ---------- */
+  function openCar(id) {
+    const car = Store.cars.find(c => c.id === id);
+    if (!car) { Router.switchTab('cars'); return; }
+    Store.curCarId = id;
+    Router.show('s-carMenu');
+    Router.setHeader(car.name, 'Автомобиль');
+  }
+
+  async function deleteCar() {
+    const car = Store.currentCar();
+    if (!car) return Router.switchTab('cars');
+    const ok = await Dialog.confirm(`Удалить «${car.name}» и всю его историю?`, { okText: 'Удалить' });
+    if (!ok) return;
+    Store.removeCar(car.id);
+    Store.curCarId = null;
+    Haptics.notify('warning');
+    Router.switchTab('cars');
+  }
+
+  function backToCarMenu() {
+    const car = Store.currentCar();
+    if (!car) return Router.switchTab('cars');
+    Router.show('s-carMenu');
+    Router.setHeader(car.name, 'Автомобиль');
+  }
+  const backToCar = backToCarMenu;
+
+  /* ---------- History ---------- */
+  function renderHistory() {
+    const car = Store.currentCar();
+    if (!car) return Router.switchTab('cars');
+    const box = document.getElementById('s-history');
+    box.classList.add('has-fab');
+    const order = Settings.get('sortOrder');
+    const sorted = Store.getSortedEntries(car, order);
+
+    updateSortIcon();
+
+    const body = sorted.length
+      ? sorted.map(entry => `
+          <div class="entry">
+            <div class="top">
+              <span>${esc(entry.date)}</span>
+              <span class="odo">${odoLabel(entry)}</span>
+              <button class="edit-btn" data-action="editEntry" data-id="${esc(entry.id)}" aria-label="Изменить запись">✏️</button>
+            </div>
+            <div class="work">${esc(entry.work)}</div>
+            ${entry.note ? `<div class="note">${esc(entry.note)}</div>` : ''}
+            ${(entry.items || []).map(it => `<div class="part"><span>${esc(it.name)}</span><span class="art">${esc(it.article || '')}</span></div>`).join('')}
+          </div>`).join('')
+      : '<div class="empty">Записей пока нет.</div>';
+
+    box.innerHTML = body;
+    Router.show('s-history');
+    Router.setHeader(car.name, 'История');
+  }
+
+  function updateSortIcon() {
+    const icon = document.getElementById('hdrSortIcon');
+    if (!icon) return;
+    icon.textContent = Settings.get('sortOrder') === 'asc' ? '↑' : '↓';
+  }
+
+  function toggleSort() {
+    const next = Settings.get('sortOrder') === 'asc' ? 'desc' : 'asc';
+    Settings.set('sortOrder', next);
+    updateSortIcon();
+    renderHistory();
+    Haptics.impact('light');
+  }
+
+  /* ---------- Entry form ---------- */
+  function showEntryForm(entryId) {
+    const car = Store.currentCar();
+    if (!car) return Router.switchTab('cars');
+
+    Store.curEntryId = entryId || null;
+    const entry = entryId ? car.entries.find(e => e.id === entryId) : null;
+    if (entryId && !entry) return renderHistory();
+
+    const data = entry || { date: '', km: '', mh: '', work: '', note: '', items: [{ name: '', article: '' }] };
+    const box = document.getElementById('s-entryForm');
+    box.innerHTML = `
+      <label>Дата</label>
+      <input type="date" id="f-date" value="${esc(toInputDate(data.date))}">
+      <div class="row2">
+        <div><label>Пробег, км</label><input id="f-km" type="number" min="0" step="any" inputmode="decimal" placeholder="—" value="${data.km || ''}"></div>
+        <div><label>Мото-часы</label><input id="f-mh" type="number" min="0" step="any" inputmode="decimal" placeholder="—" value="${data.mh || ''}"></div>
+      </div>
+      <label>Вид работы</label>
+      <textarea id="f-work" rows="2" placeholder="Например: Замена фильтров и масла">${esc(data.work)}</textarea>
+      <label>Запчасти</label>
+      <div id="partsFields"></div>
+      <button type="button" class="addline" data-action="addPartField">+ ещё запчасть</button>
+      <label>Комментарий / заметка</label>
+      <textarea id="f-note" rows="2" placeholder="Дополнительные детали, артикулы, что-то на будущее">${esc(data.note || '')}</textarea>
+      <button class="btn" data-action="saveEntry">Сохранить запись</button>
+      ${entryId ? '<button class="btn danger" data-action="deleteEntry">Удалить запись</button>' : ''}
+      <button class="btn secondary" data-action="cancelEntryForm">Отмена</button>`;
+
+    const items = data.items?.length ? data.items : [{ name: '', article: '' }];
+    items.forEach(it => addPartField(it.name, it.article));
+
+    bindAutoGrow(document.getElementById('f-work'));
+    bindAutoGrow(document.getElementById('f-note'));
+
+    Router.show('s-entryForm');
+    Router.setHeader(car.name, entryId ? 'Изменить запись' : 'Новая запись');
+    Store.entryFormBaseline = serializeEntryForm();
+  }
+
+  function addPartField(name = '', article = '') {
+    const container = document.getElementById('partsFields');
+    if (!container) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'partfield';
+    wrap.innerHTML = `
+      <button type="button" class="rm" aria-label="Удалить строку запчасти" data-action="removePartField">×</button>
+      <label>Название</label>
+      <div class="pf-wrap">
+        <input class="pf-name" value="${esc(name)}" placeholder="Название запчасти/расходника" autocomplete="off">
+        <div class="pf-dropdown"></div>
+      </div>
+      <label>Артикул</label><input class="pf-art" value="${esc(article)}" placeholder="Артикул" autocomplete="off">
+      <div class="pf-addsuggest"></div>`;
+    container.appendChild(wrap);
+
+    const nameInput = wrap.querySelector('.pf-name');
+    const artInput  = wrap.querySelector('.pf-art');
+    const dropdown  = wrap.querySelector('.pf-dropdown');
+    const addBox    = wrap.querySelector('.pf-addsuggest');
+
+    function refreshDropdown() {
+      const q = nameInput.value.trim().toLowerCase();
+      if (!q) {
+        dropdown.style.display = 'none';
+        dropdown.innerHTML = '';
+        addBox.style.display = 'none';
+        addBox.textContent = '';
+        return;
+      }
+      const matches = Store.parts.filter(p =>
+        p.name.toLowerCase().includes(q) || (p.article || '').toLowerCase().includes(q)
+      );
+      if (matches.length) {
+        dropdown.innerHTML = matches.slice(0, 6).map(p =>
+          `<div class="pf-opt" data-id="${esc(p.id)}">${esc(p.name)}${p.article ? ` <span class="art">${esc(p.article)}</span>` : ''}</div>`
+        ).join('');
+        dropdown.style.display = 'block';
+      } else {
+        dropdown.style.display = 'none';
+        dropdown.innerHTML = '';
+      }
+      refreshAddBox();
+    }
+
+    function refreshAddBox() {
+      const nv = nameInput.value.trim();
+      const av = artInput.value.trim();
+      const exact = Store.parts.some(p =>
+        p.name.trim().toLowerCase() === nv.toLowerCase() &&
+        (p.article || '').trim().toLowerCase() === av.toLowerCase()
+      );
+      if (nv && av && !exact) {
+        addBox.textContent = `+ добавить «${nv}» в каталог запчастей`;
+        addBox.style.display = 'block';
+      } else {
+        addBox.style.display = 'none';
+        addBox.textContent = '';
+      }
+    }
+
+    nameInput.addEventListener('input', debounce(refreshDropdown, 120));
+    nameInput.addEventListener('focus', refreshDropdown);
+    nameInput.addEventListener('blur', () => setTimeout(() => { dropdown.style.display = 'none'; }, 150));
+    artInput.addEventListener('input', debounce(refreshAddBox, 120));
+
+    dropdown.addEventListener('click', ev => {
+      const opt = ev.target.closest('.pf-opt');
+      if (!opt) return;
+      const part = Store.findPart(opt.dataset.id);
+      if (!part) return;
+      nameInput.value = part.name;
+      artInput.value = part.article || '';
+      dropdown.style.display = 'none';
+      dropdown.innerHTML = '';
+      addBox.style.display = 'none';
+      addBox.textContent = '';
+    });
+
+    addBox.addEventListener('click', () => {
+      const nv = nameInput.value.trim();
+      const av = artInput.value.trim();
+      if (!nv || !av) return;
+      const dup = Store.parts.some(p =>
+        p.name.toLowerCase() === nv.toLowerCase() &&
+        (p.article || '').toLowerCase() === av.toLowerCase()
+      );
+      if (!dup) Store.addPart({ schema: Migrations.PARTS_VERSION, id: uid(), name: nv, article: av });
+      addBox.textContent = dup ? '✓ уже есть в каталоге' : '✓ добавлено в каталог';
+      setTimeout(() => { addBox.style.display = 'none'; addBox.textContent = ''; }, 1200);
+    });
+  }
+
+  function removePartField(btn) {
+    btn.closest('.partfield')?.remove();
+  }
+
+  function readEntryFormState() {
+    const dateEl = document.getElementById('f-date');
+    if (!dateEl) return null;
+    return {
+      date: dateEl.value,
+      km: document.getElementById('f-km')?.value ?? '',
+      mh: document.getElementById('f-mh')?.value ?? '',
+      work: document.getElementById('f-work')?.value.trim() ?? '',
+      note: document.getElementById('f-note')?.value.trim() ?? '',
+      items: [...document.querySelectorAll('#partsFields .partfield')].map(f => ({
+        name: f.querySelector('.pf-name')?.value.trim() ?? '',
+        article: f.querySelector('.pf-art')?.value.trim() ?? ''
+      }))
+    };
+  }
+  function serializeEntryForm() {
+    const s = readEntryFormState();
+    return s ? JSON.stringify(s) : null;
+  }
+  function isEntryFormDirty() {
+    if (!document.getElementById('s-entryForm').classList.contains('active')) return false;
+    if (Store.entryFormBaseline == null) return false;
+    return serializeEntryForm() !== Store.entryFormBaseline;
+  }
+
+  function readNonNegativeNumber(id, label) {
+    const input = document.getElementById(id);
+    const raw = input?.value.trim() || '';
+    if (!raw) return 0;
+    const v = Number(raw);
+    if (!Number.isFinite(v) || v < 0) {
+      Dialog.alert(`${label} должен быть неотрицательным числом`);
+      input?.focus();
+      return null;
+    }
+    return v;
+  }
+
+  async function saveEntry(skipNav = false) {
+    const car = Store.currentCar();
+    if (!car) return false;
+
+    const date = document.getElementById('f-date')?.value || '';
+    const km = readNonNegativeNumber('f-km', 'Пробег');
+    if (km == null) return false;
+    const mh = readNonNegativeNumber('f-mh', 'Мото-часы');
+    if (mh == null) return false;
+    const work = document.getElementById('f-work')?.value.trim() || '';
+    const note = document.getElementById('f-note')?.value.trim() || '';
+
+    if (!date || !work) {
+      await Dialog.alert('Укажите дату и вид работы');
+      return false;
+    }
+
+    const items = [...document.querySelectorAll('#partsFields .partfield')]
+      .map(f => ({
+        name: f.querySelector('.pf-name')?.value.trim() || '',
+        article: f.querySelector('.pf-art')?.value.trim() || ''
+      }))
+      .filter(it => it.name);
+
+    const data = {
+      schema: Migrations.CARS_VERSION,
+      id: Store.curEntryId || uid(),
+      date: fromInputDate(date),
+      km, mh, work, note, items
+    };
+
+    const ok = Store.curEntryId
+      ? Store.updateEntry(car.id, Store.curEntryId, data)
+      : Store.addEntry(car.id, data);
+
+    if (!ok) { await Dialog.alert('Не удалось сохранить запись'); return false; }
+
+    if (!Store.curEntryId) Store.curEntryId = data.id;
+    Store.entryFormBaseline = serializeEntryForm();
+    Haptics.notify('success');
+
+    if (!skipNav) {
+      Store.entryFormBaseline = null;
+      Store.curEntryId = null;
+      renderHistory();
+    }
+    return true;
+  }
+
+  async function deleteEntry() {
+    const car = Store.currentCar();
+    if (!car || !Store.curEntryId) return;
+    const ok = await Dialog.confirm('Удалить эту запись?', { okText: 'Удалить' });
+    if (!ok) return;
+    Store.removeEntry(car.id, Store.curEntryId);
+    Store.curEntryId = null;
+    Store.entryFormBaseline = null;
+    Haptics.notify('warning');
+    renderHistory();
+  }
+
+  function cancelEntryForm() {
+    guardLeaveEntryForm(() => {
+      Store.entryFormBaseline = null;
+      Store.curEntryId = null;
+      renderHistory();
+    });
+  }
+
+  /* ---------- Parts ---------- */
+  function renderParts() {
+    const search = document.getElementById('partSearch');
+    const q = (search?.value || '').trim().toLowerCase();
+    const filtered = Store.parts.filter(p =>
+      p.name.toLowerCase().includes(q) || (p.article || '').toLowerCase().includes(q)
+    );
+    const card = document.getElementById('partsCard');
+
+    if (!Store.parts.length) {
+      card.innerHTML = '<div class="empty">Каталог пуст. Добавьте первую запчасть.</div>';
+      return;
+    }
+    if (!filtered.length) {
+      card.innerHTML = '<div class="empty">Ничего не найдено.</div>';
+      return;
+    }
+    card.innerHTML = filtered.map(p => `
+      <div class="list-row" data-action="editPart" data-id="${esc(p.id)}">
+        <div class="main"><div class="t">${esc(p.name)}</div><div class="s">${esc(p.article || '—')}</div></div>
+        <div class="arrow">›</div></div>`).join('');
+  }
+
+  function showAddPart(id = null) {
+    const part = id ? Store.findPart(id) : null;
+    if (id && !part) return Router.switchTab('parts');
+
+    const data = part || { name: '', article: '' };
+    document.getElementById('s-addPart').innerHTML = `
+      <label>Название</label><input id="p-name" value="${esc(data.name)}" placeholder="Название запчасти" autocomplete="off">
+      <label>Артикул</label><input id="p-art" value="${esc(data.article)}" placeholder="Артикул" autocomplete="off">
+      <button class="btn" data-action="savePart" data-id="${esc(id || '')}">Сохранить</button>
+      ${id ? '<button class="btn danger" data-action="delPart" data-id="' + esc(id) + '">Удалить</button>' : ''}
+      <button class="btn secondary" data-action="switchTab" data-tab="parts">Отмена</button>`;
+    Router.show('s-addPart');
+    Router.setHeader(id ? 'Изменить запчасть' : 'Новая запчасть');
+  }
+
+  async function savePart(id) {
+    const nameInput = document.getElementById('p-name');
+    const name = nameInput?.value.trim() || '';
+    const article = document.getElementById('p-art')?.value.trim() || '';
+    if (!name) { nameInput?.focus(); return; }
+    if (!article) {
+      const ok = await Dialog.confirm('Вы забыли внести артикул. Сохранить без артикула?');
+      if (!ok) return;
+    }
+    const editId = id || null;
+    const dup = Store.parts.some(p =>
+      p.id !== editId &&
+      p.name.toLowerCase() === name.toLowerCase() &&
+      (p.article || '').toLowerCase() === article.toLowerCase()
+    );
+    if (dup) { await Dialog.alert('Такая запчасть уже есть в каталоге'); return; }
+
+    if (editId) {
+      Store.updatePart(editId, { name, article });
+    } else {
+      Store.addPart({ schema: Migrations.PARTS_VERSION, id: uid(), name, article });
+    }
+    Haptics.notify('success');
+    Router.switchTab('parts');
+  }
+
+  async function delPart(id) {
+    if (!id) return;
+    const ok = await Dialog.confirm('Удалить запчасть из каталога?', { okText: 'Удалить' });
+    if (!ok) return;
+    Store.removePart(id);
+    Haptics.notify('warning');
+    Router.switchTab('parts');
+  }
+
+  return {
+    renderCars, showAddCar, addCar, showRenameCar, saveRenameCar,
+    openCar, deleteCar, backToCar, backToCarMenu,
+    renderHistory, toggleSort,
+    renderStorageStatus,
+    showEntryForm,
+    addPartField, removePartField, saveEntry, deleteEntry, cancelEntryForm,
+    renderParts, showAddPart, savePart, delPart,
+    isEntryFormDirty
+  };
+})();
+
+/* =========================================================================
+ * Global event delegation
+ * ========================================================================= */
+function handleAction(action, el) {
+  switch (action) {
+    case 'switchTab':          return Router.switchTab(el.dataset.tab);
+    case 'showAddCar':         return Views.showAddCar();
+    case 'addCar':             return Views.addCar();
+    case 'openCar':            return Views.openCar(el.dataset.id);
+    case 'renameCar':          return Views.showRenameCar(el.dataset.id);
+    case 'saveRenameCar':      return Views.saveRenameCar(el.dataset.id);
+    case 'backToCarMenu':      return Views.backToCarMenu();
+    case 'deleteCar':          return Views.deleteCar();
+    case 'backToCar':          return Views.backToCar();
+    case 'toggleSort':         return Views.toggleSort();
+    case 'go':                 return go(el.dataset.where);
+    case 'editEntry':          return Views.showEntryForm(el.dataset.id);
+    case 'addPartField':       return Views.addPartField();
+    case 'removePartField':    return Views.removePartField(el);
+    case 'saveEntry':          return Views.saveEntry();
+    case 'deleteEntry':        return Views.deleteEntry();
+    case 'cancelEntryForm':    return Views.cancelEntryForm();
+    case 'showAddPart':        return Views.showAddPart();
+    case 'editPart':           return Views.showAddPart(el.dataset.id);
+    case 'savePart':           return Views.savePart(el.dataset.id || null);
+    case 'delPart':            return Views.delPart(el.dataset.id);
+  }
 }
 
-function escAttr(value){ return esc(value); }
-
-function toInputDate(value){
-  const date = text(value);
-  if (!date) return '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
-  const match = date.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-  return match ? `${match[3]}-${match[2]}-${match[1]}` : '';
+function go(where) {
+  if (where === 'history')       Views.renderHistory();
+  else if (where === 'addEntry') Views.showEntryForm(null);
 }
 
-function fromInputDate(value){
-  const match = text(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return match ? `${match[3]}.${match[2]}.${match[1]}` : '';
+async function guardLeaveEntryForm(afterFn) {
+  if (!Views.isEntryFormDirty()) { afterFn(); return; }
+  const wantsSave = await Dialog.confirm(
+    'Вы не сохранили изменения.\n\nОК — сохранить и выйти\nОтмена — выйти без сохранения'
+  );
+  if (wantsSave) {
+    const ok = await Views.saveEntry(true);
+    if (!ok) {
+      const discard = await Dialog.confirm('Чтобы сохранить, нужно указать дату и вид работы.\nВыйти без сохранения?');
+      if (!discard) return;
+    }
+  }
+  Store.entryFormBaseline = null;
+  afterFn();
 }
 
-function showStorageWarning(message = '⚠️ Облачная синхронизация недоступна — данные сохраняются только на этом устройстве/клиенте.'){
-  if (storageWarningShown) return;
-  storageWarningShown = true;
-  const banner = document.createElement('div');
-  banner.id = 'storageWarning';
-  banner.style.cssText = 'background:#5a4326;color:#e08a2c;font-size:12px;line-height:1.4;padding:8px 14px;text-align:center;';
-  banner.textContent = message;
-  const shell = document.getElementById('shell');
-  shell.insertBefore(banner, shell.querySelector('header').nextSibling);
-}
+document.addEventListener('click', ev => {
+  const el = ev.target.closest('[data-action]');
+  if (!el) return;
+  const action = el.dataset.action;
 
-/* ---------- init ---------- */
-(async function init(){
-  cloudWorks = await probeCloud();
-  if (!cloudWorks) showStorageWarning();
+  if (action === 'renameCar' || action === 'editEntry' || action === 'removePartField') {
+    ev.stopPropagation();
+  }
 
-  const [loadedCars, loadedParts] = await Promise.all([
-    load('cars', []),
-    load('parts', [])
+  if (action === 'switchTab' || action === 'backToCar' || action === 'backToCarMenu') {
+    ev.preventDefault();
+    guardLeaveEntryForm(() => handleAction(action, el));
+    return;
+  }
+  handleAction(action, el);
+});
+
+(function bindSearch() {
+  const input = document.getElementById('partSearch');
+  if (!input) return;
+  input.addEventListener('input', debounce(() => Views.renderParts(), 150));
+})();
+
+/* =========================================================================
+ * Init
+ * ========================================================================= */
+Store.subscribe(() => Views.renderStorageStatus());
+
+(async function init() {
+  Settings.load();
+  await Storage.init();
+
+  const [rawCars, rawParts] = await Promise.all([
+    Storage.load('cars', []),
+    Storage.load('parts', [])
   ]);
 
-  cars = normalizeCars(loadedCars);
-  parts = normalizeParts(loadedParts);
-  renderCars();
+  const migrated = Migrations.run(rawCars, rawParts);
+  Store.cars = migrated.cars;
+  Store.parts = migrated.parts;
+
+  Views.renderCars();
+  Router.switchTab('cars');
 })();
 </script>
 </body>
