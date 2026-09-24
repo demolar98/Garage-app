@@ -347,6 +347,22 @@ const Storage = (() => {
       catch (_) { resolve(false); }
     });
   }
+  async function csRemoveItemsRetry(keys, tries = 3) {
+    if (!keys.length) return true;
+    for (let i = 0; i < tries; i++) {
+      if (await csRemoveItems(keys)) return true;
+      await delay(200 * (i + 1));
+    }
+    return false;
+  }
+  function csGetKeys() {
+    return new Promise(resolve => {
+      const c = cs();
+      if (!c) return resolve([]);
+      try { c.getKeys((err, keys) => resolve(!err && Array.isArray(keys) ? keys : [])); }
+      catch (_) { resolve([]); }
+    });
+  }
 
   async function probe() {
     if (!hasCloud()) return false;
@@ -423,18 +439,51 @@ const Storage = (() => {
 
     if (prevMeta) {
       const oldKeys = Array.from({ length: prevMeta.n }, (_, i) => `${name}_${prevMeta.version}_${i}`);
-      await csRemoveItems(oldKeys);
+      await csRemoveItemsRetry(oldKeys);
     }
     const legacyN = Number.parseInt(await csGetItem(`${name}_n`), 10) || 0;
     if (legacyN > 0) {
       const legacyKeys = Array.from({ length: legacyN }, (_, i) => `${name}_${i}`);
       legacyKeys.push(`${name}_n`);
-      await csRemoveItems(legacyKeys);
+      await csRemoveItemsRetry(legacyKeys);
     }
     return true;
   }
 
+  /* Удаляет ключи "name_*", оставшиеся от прежних версий (например,
+     после сохранения, при котором не удалось стереть старые чанки).
+     CloudStorage у Telegram ограничен 1024 ключами на пользователя,
+     так что такой "мусор" со временем может забить весь лимит и
+     заблокировать любые новые сохранения. Удаление ключей, в отличие
+     от записи, не требует свободного места, поэтому эту очистку можно
+     выполнять даже когда лимит уже исчерпан. */
+  async function gcOrphans(name) {
+    try {
+      const allKeys = await csGetKeys();
+      const prefix = `${name}_`;
+      const own = allKeys.filter(k => k.startsWith(prefix));
+      if (!own.length) return;
+
+      const keep = new Set();
+      const meta = parseMeta(await csGetItem(`${name}_meta`));
+      if (meta) {
+        keep.add(`${name}_meta`);
+        for (let i = 0; i < meta.n; i++) keep.add(`${name}_${meta.version}_${i}`);
+      }
+      const legacyN = Number.parseInt(await csGetItem(`${name}_n`), 10) || 0;
+      if (legacyN > 0) {
+        keep.add(`${name}_n`);
+        for (let i = 0; i < legacyN; i++) keep.add(`${name}_${i}`);
+      }
+      const orphans = own.filter(k => !keep.has(k));
+      if (orphans.length) await csRemoveItemsRetry(orphans);
+    } catch (_) {}
+  }
+
   async function init() {
+    if (hasCloud()) {
+      await Promise.allSettled([gcOrphans('cars'), gcOrphans('parts')]);
+    }
     cloudAvailable = await probe();
     if (!cloudAvailable) showWarning();
     return cloudAvailable;
