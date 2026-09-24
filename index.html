@@ -42,15 +42,8 @@ header{
   padding-top:calc(14px + env(safe-area-inset-top,0px));
   display:flex; align-items:baseline; gap:8px;
 }
-header h1{font-size:17px; font-weight:700; letter-spacing:.2px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+header h1{font-size:17px; font-weight:700; letter-spacing:.2px;}
 header .crumb{font-size:13px; color:var(--dim);}
-.header-sort{
-  width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center;
-  color:var(--dim); font-size:15px; background:transparent; align-self:center; flex-shrink:0;
-  transition:opacity .15s;
-}
-.header-sort:active{color:var(--amber);}
-.header-sort.hidden{display:none;}
 main{flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;}
 .screen{padding:14px 16px 24px; display:none;}
 .screen.active{display:block;}
@@ -70,13 +63,12 @@ main{flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;}
 .list-row .main{flex:1; min-width:0;}
 .list-row .main .t,
 .list-row .main .s{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-.list-row .row-actions{display:flex; align-items:center; gap:4px; flex-shrink:0;}
+.list-row .row-actions{display:flex; align-items:center; gap:8px; flex-shrink:0;}
 .icon-btn{
   width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center;
-  color:var(--dim); font-size:16px; background:transparent; opacity:.6;
-  transition:opacity .15s, color .15s;
+  color:var(--dim); font-size:16px; background:transparent;
 }
-.icon-btn:active{background:transparent; color:var(--amber); opacity:1;}
+.icon-btn:active{background:var(--amber-dim); color:var(--amber);}
 .empty{padding:40px 10px; text-align:center; color:var(--dim); font-size:14px; line-height:1.5;}
 button{font-family:inherit; border:none; background:none; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation;}
 .btn{
@@ -105,13 +97,6 @@ input,textarea,select{
   width:100%; padding:11px 12px; border-radius:8px; border:1px solid var(--line);
   background:var(--bg); color:var(--text); font-size:16px; margin-bottom:10px; font-family:inherit;
 }
-input,textarea{ -webkit-appearance:none; appearance:none; }
-textarea{
-  resize:none;
-  line-height:1.45;
-  min-height:44px;
-  overflow:hidden;
-}
 label{font-size:12px; color:var(--dim); display:block; margin-bottom:5px; margin-top:2px;}
 .row2{display:flex; gap:8px;}
 .row2 > div{flex:1;}
@@ -123,14 +108,12 @@ label{font-size:12px; color:var(--dim); display:block; margin-bottom:5px; margin
 .entry .top .odo{font-family:var(--mono); color:var(--amber); font-weight:600; flex:1; text-align:right;}
 .entry .top .edit-btn{
   width:30px; height:30px; border-radius:7px; display:flex; align-items:center; justify-content:center;
-  color:var(--dim); font-size:15px; flex-shrink:0; background:transparent; opacity:.6;
-  transition:opacity .15s, color .15s;
+  color:var(--dim); font-size:15px; flex-shrink:0;
 }
-.entry .top .edit-btn:active{background:transparent; color:var(--amber); opacity:1;}
-.entry .work{font-size:15px; font-weight:600; margin-bottom:6px; white-space:pre-wrap; word-break:break-word;}
-.entry .note{font-size:13px; color:var(--dim); font-style:italic; margin-top:6px; white-space:pre-wrap; word-break:break-word;}
-.entry .part{font-size:13px; color:var(--dim); display:flex; justify-content:space-between; padding:2px 0; gap:8px;}
-.entry .part .art{font-family:var(--mono); color:var(--text); text-align:right;}
+.entry .top .edit-btn:active{background:var(--amber-dim); color:var(--amber);}
+.entry .work{font-size:15px; font-weight:600; margin-bottom:6px;}
+.entry .part{font-size:13px; color:var(--dim); display:flex; justify-content:space-between; padding:2px 0;}
+.entry .part .art{font-family:var(--mono); color:var(--text);}
 .partfield{border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; position:relative;}
 .pf-wrap{position:relative;}
 .pf-dropdown{position:absolute; left:0; right:0; top:100%; margin-top:2px; background:var(--bg2); border:1px solid var(--line); border-radius:8px; max-height:180px; overflow-y:auto; z-index:20; display:none;}
@@ -159,7 +142,6 @@ nav button.on{color:var(--amber);}
 <header>
   <h1 id="hdrTitle">Гараж</h1>
   <span class="crumb" id="hdrCrumb"></span>
-  <button class="header-sort hidden" id="hdrSort" data-action="toggleSort" aria-label="Переключить сортировку"><span id="hdrSortIcon">↓</span></button>
 </header>
 
 <main id="main">
@@ -210,7 +192,7 @@ nav button.on{color:var(--amber);}
 'use strict';
 
 /* =========================================================================
- * Запрет масштабирования
+ * Запрет масштабирования (pinch + double-tap zoom)
  * ========================================================================= */
 (function lockZoom(){
   try {
@@ -218,6 +200,7 @@ nav button.on{color:var(--amber);}
     document.addEventListener('gesturechange', e => e.preventDefault());
     document.addEventListener('gestureend', e => e.preventDefault());
     document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+    /* Дополнительно блокируем multi-touch pinch */
     document.addEventListener('touchmove', e => {
       if (e.touches.length > 1) e.preventDefault();
     }, { passive: false });
@@ -268,32 +251,7 @@ const Dialog = {
 };
 
 /* =========================================================================
- * Settings (persisted)
- * ========================================================================= */
-const Settings = (() => {
-  const KEY = 'garage_settings_v1';
-  const defaults = { sortOrder: 'desc' }; // 'desc' = новые сверху, 'asc' = старые сверху
-
-  let state = { ...defaults };
-
-  function load() {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) Object.assign(state, JSON.parse(raw));
-    } catch (_) {}
-    return state;
-  }
-  function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (_) {}
-  }
-  function get(k) { return state[k]; }
-  function set(k, v) { state[k] = v; save(); }
-
-  return { load, get, set, get state() { return state; } };
-})();
-
-/* =========================================================================
- * Storage module
+ * Storage module (без изменений по формату данных)
  * ========================================================================= */
 const Storage = (() => {
   const CHUNK = 3800;
@@ -499,7 +457,7 @@ const Storage = (() => {
  * Migrations
  * ========================================================================= */
 const Migrations = {
-  CARS_VERSION: 3,
+  CARS_VERSION: 2,
   PARTS_VERSION: 2,
 
   run(rawCars, rawParts) {
@@ -532,7 +490,6 @@ const Migrations = {
         km: cleanNumber(e.km),
         mh: cleanNumber(e.mh),
         work: text(e.work),
-        note: text(e.note),
         items: this.migrateItems(e.items)
       }))
       .filter(e => e.date || e.work);
@@ -657,25 +614,19 @@ const Store = (() => {
       parts = parts.filter(p => p.id !== id); this.saveParts(); emit();
     },
 
-    getSortedEntries(car, order = 'desc') {
+    getSortedEntries(car) {
       if (!car) return [];
-      const key = `${car.id}:${entriesRev}:${order}`;
+      const key = `${car.id}:${entriesRev}`;
       const cached = sortedCache.get(key);
       if (cached) return cached;
-      const dir = order === 'asc' ? 1 : -1;
       const sorted = [...car.entries].sort((a, b) =>
-        dir * (entryDateValue(a) - entryDateValue(b)) ||
-        dir * (cleanNumber(a.km) - cleanNumber(b.km)) ||
-        dir * (cleanNumber(a.mh) - cleanNumber(b.mh))
+        entryDateValue(b) - entryDateValue(a) ||
+        cleanNumber(b.km) - cleanNumber(a.km) ||
+        cleanNumber(b.mh) - cleanNumber(a.mh)
       );
       sortedCache.set(key, sorted);
-      /* Чистим кэш для этого carId, оставляя только актуальную ревизию+порядок */
       for (const k of sortedCache.keys()) {
-        if (k.startsWith(`${car.id}:`) && k !== key) {
-          /* оставляем только тот же rev в другом порядке, чтобы переключение было мгновенным */
-          const [, rev, ord] = k.split(':');
-          if (rev !== String(entriesRev)) sortedCache.delete(k);
-        }
+        if (k.startsWith(`${car.id}:`) && k !== key) sortedCache.delete(k);
       }
       return sorted;
     },
@@ -734,25 +685,12 @@ function debounce(fn, ms = 200) {
   };
 }
 
-/* Автовысота для textarea */
-function autoGrow(el) {
-  if (!el || el.tagName !== 'TEXTAREA') return;
-  el.style.height = 'auto';
-  el.style.height = el.scrollHeight + 'px';
-}
-function bindAutoGrow(el) {
-  if (!el) return;
-  autoGrow(el);
-  el.addEventListener('input', () => autoGrow(el));
-}
-
 /* =========================================================================
  * Router
  * ========================================================================= */
 const Router = (() => {
   let current = 's-cars';
   const FAB_SCREENS = new Set(['s-history']);
-  const SORT_SCREENS = new Set(['s-history']);
 
   function show(id) {
     const target = document.getElementById(id);
@@ -765,9 +703,6 @@ const Router = (() => {
 
     const fab = document.getElementById('backFab');
     if (fab) fab.classList.toggle('hidden', !FAB_SCREENS.has(id));
-
-    const sortBtn = document.getElementById('hdrSort');
-    if (sortBtn) sortBtn.classList.toggle('hidden', !SORT_SCREENS.has(id));
   }
 
   function setHeader(title, crumb = '') {
@@ -807,7 +742,7 @@ const Views = (() => {
       return;
     }
     card.innerHTML = cars.map(car => {
-      const sorted = Store.getSortedEntries(car, Settings.get('sortOrder'));
+      const sorted = Store.getSortedEntries(car);
       const latest = sorted[0];
       const sub = latest ? `${esc(latest.date)} · ${odoLabel(latest)}` : 'Нет записей';
       return `<div class="list-row" data-action="openCar" data-id="${esc(car.id)}">
@@ -902,16 +837,13 @@ const Views = (() => {
     Router.setHeader(car.name, 'Автомобиль');
   }
 
-  /* ---------- History ---------- */
+  /* ---------- History (with edit pencil) ---------- */
   function renderHistory() {
     const car = Store.currentCar();
     if (!car) return Router.switchTab('cars');
     const box = document.getElementById('s-history');
     box.classList.add('has-fab');
-    const order = Settings.get('sortOrder');
-    const sorted = Store.getSortedEntries(car, order);
-
-    updateSortIcon();
+    const sorted = Store.getSortedEntries(car);
 
     const body = sorted.length
       ? sorted.map(entry => `
@@ -922,7 +854,6 @@ const Views = (() => {
               <button class="edit-btn" data-action="editEntry" data-id="${esc(entry.id)}" aria-label="Изменить запись">✏️</button>
             </div>
             <div class="work">${esc(entry.work)}</div>
-            ${entry.note ? `<div class="note">${esc(entry.note)}</div>` : ''}
             ${(entry.items || []).map(it => `<div class="part"><span>${esc(it.name)}</span><span class="art">${esc(it.article || '')}</span></div>`).join('')}
           </div>`).join('')
       : '<div class="empty">Записей пока нет.</div>';
@@ -930,20 +861,6 @@ const Views = (() => {
     box.innerHTML = body;
     Router.show('s-history');
     Router.setHeader(car.name, 'История');
-  }
-
-  function updateSortIcon() {
-    const icon = document.getElementById('hdrSortIcon');
-    if (!icon) return;
-    icon.textContent = Settings.get('sortOrder') === 'asc' ? '↑' : '↓';
-  }
-
-  function toggleSort() {
-    const next = Settings.get('sortOrder') === 'asc' ? 'desc' : 'asc';
-    Settings.set('sortOrder', next);
-    updateSortIcon();
-    renderHistory();
-    Haptics.impact('light');
   }
 
   /* ---------- Entry form ---------- */
@@ -955,7 +872,7 @@ const Views = (() => {
     const entry = entryId ? car.entries.find(e => e.id === entryId) : null;
     if (entryId && !entry) return renderHistory();
 
-    const data = entry || { date: '', km: '', mh: '', work: '', note: '', items: [{ name: '', article: '' }] };
+    const data = entry || { date: '', km: '', mh: '', work: '', items: [{ name: '', article: '' }] };
     const box = document.getElementById('s-entryForm');
     box.innerHTML = `
       <label>Дата</label>
@@ -965,21 +882,16 @@ const Views = (() => {
         <div><label>Мото-часы</label><input id="f-mh" type="number" min="0" step="any" inputmode="decimal" placeholder="—" value="${data.mh || ''}"></div>
       </div>
       <label>Вид работы</label>
-      <textarea id="f-work" rows="2" placeholder="Например: Замена фильтров и масла">${esc(data.work)}</textarea>
+      <input id="f-work" placeholder="Например: Замена фильтров и масла" value="${esc(data.work)}">
       <label>Запчасти</label>
       <div id="partsFields"></div>
       <button type="button" class="addline" data-action="addPartField">+ ещё запчасть</button>
-      <label>Комментарий / заметка</label>
-      <textarea id="f-note" rows="2" placeholder="Дополнительные детали, артикулы, что-то на будущее">${esc(data.note || '')}</textarea>
       <button class="btn" data-action="saveEntry">Сохранить запись</button>
       ${entryId ? '<button class="btn danger" data-action="deleteEntry">Удалить запись</button>' : ''}
       <button class="btn secondary" data-action="cancelEntryForm">Отмена</button>`;
 
     const items = data.items?.length ? data.items : [{ name: '', article: '' }];
     items.forEach(it => addPartField(it.name, it.article));
-
-    bindAutoGrow(document.getElementById('f-work'));
-    bindAutoGrow(document.getElementById('f-note'));
 
     Router.show('s-entryForm');
     Router.setHeader(car.name, entryId ? 'Изменить запись' : 'Новая запись');
@@ -1091,7 +1003,6 @@ const Views = (() => {
       km: document.getElementById('f-km')?.value ?? '',
       mh: document.getElementById('f-mh')?.value ?? '',
       work: document.getElementById('f-work')?.value.trim() ?? '',
-      note: document.getElementById('f-note')?.value.trim() ?? '',
       items: [...document.querySelectorAll('#partsFields .partfield')].map(f => ({
         name: f.querySelector('.pf-name')?.value.trim() ?? '',
         article: f.querySelector('.pf-art')?.value.trim() ?? ''
@@ -1131,7 +1042,6 @@ const Views = (() => {
     const mh = readNonNegativeNumber('f-mh', 'Мото-часы');
     if (mh == null) return false;
     const work = document.getElementById('f-work')?.value.trim() || '';
-    const note = document.getElementById('f-note')?.value.trim() || '';
 
     if (!date || !work) {
       await Dialog.alert('Укажите дату и вид работы');
@@ -1149,7 +1059,7 @@ const Views = (() => {
       schema: Migrations.CARS_VERSION,
       id: Store.curEntryId || uid(),
       date: fromInputDate(date),
-      km, mh, work, note, items
+      km, mh, work, items
     };
 
     const ok = Store.curEntryId
@@ -1264,8 +1174,7 @@ const Views = (() => {
   return {
     renderCars, showAddCar, addCar, showRenameCar, saveRenameCar,
     openCar, deleteCar, backToCar, backToCarMenu,
-    renderHistory, toggleSort,
-    showEntryForm,
+    renderHistory, showEntryForm,
     addPartField, removePartField, saveEntry, deleteEntry, cancelEntryForm,
     renderParts, showAddPart, savePart, delPart,
     isEntryFormDirty
@@ -1286,7 +1195,6 @@ function handleAction(action, el) {
     case 'backToCarMenu':      return Views.backToCarMenu();
     case 'deleteCar':          return Views.deleteCar();
     case 'backToCar':          return Views.backToCar();
-    case 'toggleSort':         return Views.toggleSort();
     case 'go':                 return go(el.dataset.where);
     case 'editEntry':          return Views.showEntryForm(el.dataset.id);
     case 'addPartField':       return Views.addPartField();
@@ -1327,6 +1235,7 @@ document.addEventListener('click', ev => {
   if (!el) return;
   const action = el.dataset.action;
 
+  /* Клик по карандашу не должен открывать авто */
   if (action === 'renameCar' || action === 'editEntry' || action === 'removePartField') {
     ev.stopPropagation();
   }
@@ -1349,7 +1258,6 @@ document.addEventListener('click', ev => {
  * Init
  * ========================================================================= */
 (async function init() {
-  Settings.load();
   await Storage.init();
 
   const [rawCars, rawParts] = await Promise.all([
