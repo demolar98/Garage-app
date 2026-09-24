@@ -272,7 +272,7 @@ const Dialog = {
  * ========================================================================= */
 const Settings = (() => {
   const KEY = 'garage_settings_v1';
-  const defaults = { sortOrder: 'desc' };
+  const defaults = { sortOrder: 'desc' }; // 'desc' = новые сверху, 'asc' = старые сверху
 
   let state = { ...defaults };
 
@@ -669,9 +669,11 @@ const Store = (() => {
         dir * (cleanNumber(a.mh) - cleanNumber(b.mh))
       );
       sortedCache.set(key, sorted);
+      /* Чистим кэш для этого carId, оставляя только актуальную ревизию+порядок */
       for (const k of sortedCache.keys()) {
         if (k.startsWith(`${car.id}:`) && k !== key) {
-          const [, rev] = k.split(':');
+          /* оставляем только тот же rev в другом порядке, чтобы переключение было мгновенным */
+          const [, rev, ord] = k.split(':');
           if (rev !== String(entriesRev)) sortedCache.delete(k);
         }
       }
@@ -731,6 +733,8 @@ function debounce(fn, ms = 200) {
     t = setTimeout(() => fn(...args), ms);
   };
 }
+
+/* Автовысота для textarea */
 function autoGrow(el) {
   if (!el || el.tagName !== 'TEXTAREA') return;
   el.style.height = 'auto';
@@ -740,9 +744,6 @@ function bindAutoGrow(el) {
   if (!el) return;
   autoGrow(el);
   el.addEventListener('input', () => autoGrow(el));
-}
-function formatNumber(n) {
-  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
 /* =========================================================================
@@ -805,22 +806,10 @@ const Views = (() => {
       card.innerHTML = '<div class="empty">Пока нет ни одного автомобиля.<br>Добавьте первый, чтобы вести историю обслуживания.</div>';
       return;
     }
-    const order = Settings.get('sortOrder');
     card.innerHTML = cars.map(car => {
-      const sorted = Store.getSortedEntries(car, order);
+      const sorted = Store.getSortedEntries(car, Settings.get('sortOrder'));
       const latest = sorted[0];
-
-      /* Дата и км — из последней записи (как раньше). */
-      const datePart = latest ? esc(latest.date) : '';
-      const kmPart = latest && cleanNumber(latest.km) ? `${formatNumber(cleanNumber(latest.km))} км` : '';
-
-      /* М.ч. — из самой свежей записи, где они заполнены. */
-      const lastMh = latestMh(car, order);
-      const mhPart = lastMh ? `${formatNumber(cleanNumber(lastMh.mh))} м.ч.` : '';
-
-      const summaryParts = [datePart, kmPart, mhPart].filter(Boolean);
-      const sub = summaryParts.length ? summaryParts.join(' · ') : 'Нет записей';
-
+      const sub = latest ? `${esc(latest.date)} · ${odoLabel(latest)}` : 'Нет записей';
       return `<div class="list-row" data-action="openCar" data-id="${esc(car.id)}">
         <div class="main"><div class="t">${esc(car.name)}</div><div class="s">${sub}</div></div>
         <div class="row-actions">
@@ -829,13 +818,6 @@ const Views = (() => {
         </div>
       </div>`;
     }).join('');
-  }
-
-  /* Последняя запись (по выбранному порядку), где заполнены м.ч. */
-  function latestMh(car, order) {
-    if (!car) return null;
-    const sorted = Store.getSortedEntries(car, order);
-    return sorted.find(e => cleanNumber(e.mh) > 0) || null;
   }
 
   /* ---------- Add car ---------- */
