@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
 <title>Гараж</title>
 <style>
@@ -16,12 +16,19 @@
     --bg:#f2f0ea; --bg2:#ffffff; --line:#ddd8cc; --text:#211f1a; --dim:#7a766c; --amber-dim:#f1dcb8;
   }
 }
-*{box-sizing:border-box; margin:0; padding:0;}
-html{height:100%; scroll-padding-top:env(safe-area-inset-top,0px); -webkit-text-size-adjust:100%;}
+*{box-sizing:border-box; margin:0; padding:0; touch-action:manipulation;}
+html{
+  height:100%;
+  scroll-padding-top:env(safe-area-inset-top,0px);
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
 body{
   height:100%; min-height:100dvh; background:var(--bg2); color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   display:flex; justify-content:center; overflow:hidden;
+  touch-action:pan-y;
+  -webkit-touch-callout:none;
 }
 #shell{
   width:100%; max-width:480px; height:100%; min-height:100dvh; background:var(--bg);
@@ -40,6 +47,7 @@ header .crumb{font-size:13px; color:var(--dim);}
 main{flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;}
 .screen{padding:14px 16px 24px; display:none;}
 .screen.active{display:block;}
+.screen.has-fab{padding-bottom:96px;}
 .card{
   background:var(--bg2); border:1px solid var(--line); border-radius:10px;
   padding:14px; margin-bottom:10px;
@@ -52,6 +60,15 @@ main{flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;}
 .list-row .t{font-size:15px; font-weight:600;}
 .list-row .s{font-size:12px; color:var(--dim); margin-top:2px;}
 .list-row .arrow{color:var(--dim); font-size:16px;}
+.list-row .main{flex:1; min-width:0;}
+.list-row .main .t,
+.list-row .main .s{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.list-row .row-actions{display:flex; align-items:center; gap:8px; flex-shrink:0;}
+.icon-btn{
+  width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+  color:var(--dim); font-size:16px; background:transparent;
+}
+.icon-btn:active{background:var(--amber-dim); color:var(--amber);}
 .empty{padding:40px 10px; text-align:center; color:var(--dim); font-size:14px; line-height:1.5;}
 button{font-family:inherit; border:none; background:none; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation;}
 .btn{
@@ -65,6 +82,17 @@ button{font-family:inherit; border:none; background:none; cursor:pointer; -webki
   width:52px; height:52px; border-radius:50%; background:var(--amber); color:#1a1410;
   font-size:26px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,.35);
 }
+.back-fab{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:calc(70px + env(safe-area-inset-bottom,0px));
+  width:calc(100% - 32px);
+  max-width:448px;
+  z-index:10;
+  margin:0;
+}
+.back-fab.hidden{display:none;}
 input,textarea,select{
   width:100%; padding:11px 12px; border-radius:8px; border:1px solid var(--line);
   background:var(--bg); color:var(--text); font-size:16px; margin-bottom:10px; font-family:inherit;
@@ -76,13 +104,16 @@ label{font-size:12px; color:var(--dim); display:block; margin-bottom:5px; margin
 .seg button{flex:1; padding:9px 0; background:var(--bg); color:var(--dim); font-size:13px; font-weight:600;}
 .seg button.on{background:var(--amber-dim); color:var(--amber);}
 .entry{border-left:2px solid var(--amber); padding:10px 12px; margin-bottom:10px; background:var(--bg2); border-radius:0 8px 8px 0;}
-.entry .top{display:flex; justify-content:space-between; font-size:13px; color:var(--dim); margin-bottom:4px;}
-.entry .odo{font-family:var(--mono); color:var(--amber); font-weight:600;}
+.entry .top{display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--dim); margin-bottom:4px; gap:8px;}
+.entry .top .odo{font-family:var(--mono); color:var(--amber); font-weight:600; flex:1; text-align:right;}
+.entry .top .edit-btn{
+  width:30px; height:30px; border-radius:7px; display:flex; align-items:center; justify-content:center;
+  color:var(--dim); font-size:15px; flex-shrink:0;
+}
+.entry .top .edit-btn:active{background:var(--amber-dim); color:var(--amber);}
 .entry .work{font-size:15px; font-weight:600; margin-bottom:6px;}
 .entry .part{font-size:13px; color:var(--dim); display:flex; justify-content:space-between; padding:2px 0;}
 .entry .part .art{font-family:var(--mono); color:var(--text);}
-.entry .actions{display:flex; gap:16px; margin-top:8px;}
-.entry .actions a{font-size:12px; color:var(--dim); text-decoration:underline;}
 .partfield{border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; position:relative;}
 .pf-wrap{position:relative;}
 .pf-dropdown{position:absolute; left:0; right:0; top:100%; margin-top:2px; background:var(--bg2); border:1px solid var(--line); border-radius:8px; max-height:180px; overflow-y:auto; z-index:20; display:none;}
@@ -122,16 +153,21 @@ nav button.on{color:var(--amber);}
 
   <section class="screen" id="s-carMenu">
     <div class="card">
-      <div class="list-row" data-action="go" data-where="history"><div><div class="t">Просмотреть историю обслуживания</div></div><div class="arrow">›</div></div>
-      <div class="list-row" data-action="go" data-where="addEntry"><div><div class="t">Добавить данные</div></div><div class="arrow">›</div></div>
-      <div class="list-row" data-action="go" data-where="editList"><div><div class="t">Изменить данные</div></div><div class="arrow">›</div></div>
+      <div class="list-row" data-action="go" data-where="history">
+        <div class="main"><div class="t">Просмотреть историю обслуживания</div></div>
+        <div class="arrow">›</div>
+      </div>
+      <div class="list-row" data-action="go" data-where="addEntry">
+        <div class="main"><div class="t">Добавить данные</div></div>
+        <div class="arrow">›</div>
+      </div>
     </div>
     <button class="btn danger" data-action="deleteCar">Удалить автомобиль</button>
   </section>
 
   <section class="screen" id="s-history"></section>
   <section class="screen" id="s-entryForm"></section>
-  <section class="screen" id="s-editList"></section>
+  <section class="screen" id="s-renameCar"></section>
 
   <section class="screen" id="s-parts">
     <div class="searchbox"><input id="partSearch" placeholder="Поиск по названию или артикулу"></div>
@@ -148,10 +184,28 @@ nav button.on{color:var(--amber);}
   <button id="navCars" class="on" data-action="switchTab" data-tab="cars"><span class="ic">🚗</span>Автомобили</button>
   <button id="navParts" data-action="switchTab" data-tab="parts"><span class="ic">🔧</span>Запчасти</button>
 </nav>
+
+<button class="btn secondary back-fab hidden" id="backFab" data-action="backToCar">‹ К автомобилю</button>
 </div>
 
 <script>
 'use strict';
+
+/* =========================================================================
+ * Запрет масштабирования (pinch + double-tap zoom)
+ * ========================================================================= */
+(function lockZoom(){
+  try {
+    document.addEventListener('gesturestart', e => e.preventDefault());
+    document.addEventListener('gesturechange', e => e.preventDefault());
+    document.addEventListener('gestureend', e => e.preventDefault());
+    document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+    /* Дополнительно блокируем multi-touch pinch */
+    document.addEventListener('touchmove', e => {
+      if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+  } catch (_) {}
+})();
 
 /* =========================================================================
  * Telegram bootstrap
@@ -176,7 +230,6 @@ const Haptics = {
   }
 };
 
-/* Нативные диалоги Telegram с fallback на window.confirm/alert */
 const Dialog = {
   confirm(message, { okText = 'ОК', cancelText = 'Отмена' } = {}) {
     return new Promise(resolve => {
@@ -198,14 +251,10 @@ const Dialog = {
 };
 
 /* =========================================================================
- * Storage module
- *  - CloudStorage (Telegram) с чанкованием и версионированием
- *  - localStorage как резерв
- *  - очередь записи, ретраи, атомарный commit манифеста
+ * Storage module (без изменений по формату данных)
  * ========================================================================= */
 const Storage = (() => {
   const CHUNK = 3800;
-  const LEGACY_CHUNK = 3800;
   const queues = new Map();
   let cloudAvailable = false;
   let warningShown = false;
@@ -262,7 +311,6 @@ const Storage = (() => {
     });
   }
 
-  /* Проверка доступности CloudStorage */
   async function probe() {
     if (!hasCloud()) return false;
     const key = '__probe';
@@ -275,7 +323,6 @@ const Storage = (() => {
     } catch (_) { return false; }
   }
 
-  /* --- localStorage --- */
   const local = {
     get(key, fallback) {
       try {
@@ -289,7 +336,6 @@ const Storage = (() => {
     }
   };
 
-  /* --- chunked cloud I/O --- */
   function parseMeta(raw) {
     if (!raw) return null;
     try {
@@ -351,7 +397,6 @@ const Storage = (() => {
     return true;
   }
 
-  /* --- public API --- */
   async function init() {
     cloudAvailable = await probe();
     if (!cloudAvailable) showWarning();
@@ -447,7 +492,6 @@ const Migrations = {
         work: text(e.work),
         items: this.migrateItems(e.items)
       }))
-      /* Отбрасываем мусорные записи без даты/работы */
       .filter(e => e.date || e.work);
   },
 
@@ -480,7 +524,7 @@ const Migrations = {
 };
 
 /* =========================================================================
- * Store — единое состояние + мемоизация
+ * Store
  * ========================================================================= */
 const Store = (() => {
   let cars = [];
@@ -490,16 +534,15 @@ const Store = (() => {
   let curTab = 'cars';
   let entryFormBaseline = null;
 
-  /* Кэш сортировки: WeakMap не подходит для примитивов, используем Map по ссылке+рев. */
   let entriesRev = 0;
-  const sortedCache = new Map(); // key: `${carId}:${rev}` -> sorted
+  const sortedCache = new Map();
 
   const listeners = new Set();
   function emit() { listeners.forEach(fn => { try { fn(); } catch (e) { console.error(e); } }); }
   function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+  function bumpRev() { entriesRev++; }
 
   return {
-    /* --- cars --- */
     get cars() { return cars; },
     set cars(v) { cars = v; bumpRev(); emit(); },
     get parts() { return parts; },
@@ -517,13 +560,19 @@ const Store = (() => {
     currentCar() { return cars.find(c => c.id === curCarId) || null; },
     findPart(id) { return parts.find(p => p.id === id) || null; },
 
-    /* --- mutations (автосохранение) --- */
     saveCars() { return Storage.persist('cars', cars); },
     saveParts() { return Storage.persist('parts', parts); },
 
     addCar(name) {
       cars.push({ schema: Migrations.CARS_VERSION, id: uid(), name, entries: [] });
       bumpRev(); this.saveCars(); emit();
+    },
+    renameCar(id, name) {
+      const car = cars.find(c => c.id === id);
+      if (!car) return false;
+      car.name = name;
+      this.saveCars(); emit();
+      return true;
     },
     removeCar(id) {
       cars = cars.filter(c => c.id !== id);
@@ -565,7 +614,6 @@ const Store = (() => {
       parts = parts.filter(p => p.id !== id); this.saveParts(); emit();
     },
 
-    /* --- sorted entries с мемоизацией --- */
     getSortedEntries(car) {
       if (!car) return [];
       const key = `${car.id}:${entriesRev}`;
@@ -577,7 +625,6 @@ const Store = (() => {
         cleanNumber(b.mh) - cleanNumber(a.mh)
       );
       sortedCache.set(key, sorted);
-      /* чистим старые ревизии этого carId */
       for (const k of sortedCache.keys()) {
         if (k.startsWith(`${car.id}:`) && k !== key) sortedCache.delete(k);
       }
@@ -587,8 +634,6 @@ const Store = (() => {
     subscribe,
     emit
   };
-
-  function bumpRev() { entriesRev++; }
 })();
 
 /* =========================================================================
@@ -641,10 +686,11 @@ function debounce(fn, ms = 200) {
 }
 
 /* =========================================================================
- * Router / Screens
+ * Router
  * ========================================================================= */
 const Router = (() => {
   let current = 's-cars';
+  const FAB_SCREENS = new Set(['s-history']);
 
   function show(id) {
     const target = document.getElementById(id);
@@ -654,6 +700,9 @@ const Router = (() => {
     const main = document.getElementById('main');
     if (main) main.scrollTop = 0;
     current = id;
+
+    const fab = document.getElementById('backFab');
+    if (fab) fab.classList.toggle('hidden', !FAB_SCREENS.has(id));
   }
 
   function setHeader(title, crumb = '') {
@@ -697,8 +746,12 @@ const Views = (() => {
       const latest = sorted[0];
       const sub = latest ? `${esc(latest.date)} · ${odoLabel(latest)}` : 'Нет записей';
       return `<div class="list-row" data-action="openCar" data-id="${esc(car.id)}">
-        <div><div class="t">${esc(car.name)}</div><div class="s">${sub}</div></div>
-        <div class="arrow">›</div></div>`;
+        <div class="main"><div class="t">${esc(car.name)}</div><div class="s">${sub}</div></div>
+        <div class="row-actions">
+          <button class="icon-btn" data-action="renameCar" data-id="${esc(car.id)}" aria-label="Переименовать">✏️</button>
+          <div class="arrow">›</div>
+        </div>
+      </div>`;
     }).join('');
   }
 
@@ -719,6 +772,33 @@ const Views = (() => {
     const name = input?.value.trim() || '';
     if (!name) { input?.focus(); return; }
     Store.addCar(name);
+    Haptics.notify('success');
+    Router.switchTab('cars');
+  }
+
+  /* ---------- Rename car ---------- */
+  function showRenameCar(id) {
+    const car = Store.cars.find(c => c.id === id);
+    if (!car) return Router.switchTab('cars');
+    document.getElementById('s-renameCar').innerHTML = `
+      <label>Новое название</label>
+      <input id="renameCarName" value="${esc(car.name)}" autocomplete="off">
+      <button class="btn" data-action="saveRenameCar" data-id="${esc(id)}">Сохранить</button>
+      <button class="btn secondary" data-action="backToCarMenu">Отмена</button>`;
+    Router.show('s-renameCar');
+    Router.setHeader('Переименовать', 'Автомобиль');
+    setTimeout(() => {
+      const el = document.getElementById('renameCarName');
+      el?.focus();
+      el?.setSelectionRange(el.value.length, el.value.length);
+    }, 0);
+  }
+
+  function saveRenameCar(id) {
+    const input = document.getElementById('renameCarName');
+    const name = input?.value.trim() || '';
+    if (!name) { input?.focus(); return; }
+    Store.renameCar(id, name);
     Haptics.notify('success');
     Router.switchTab('cars');
   }
@@ -750,44 +830,37 @@ const Views = (() => {
     Router.setHeader(car.name, 'Автомобиль');
   }
 
-  /* ---------- History ---------- */
+  function backToCarMenu() {
+    const car = Store.currentCar();
+    if (!car) return Router.switchTab('cars');
+    Router.show('s-carMenu');
+    Router.setHeader(car.name, 'Автомобиль');
+  }
+
+  /* ---------- History (with edit pencil) ---------- */
   function renderHistory() {
     const car = Store.currentCar();
     if (!car) return Router.switchTab('cars');
     const box = document.getElementById('s-history');
+    box.classList.add('has-fab');
     const sorted = Store.getSortedEntries(car);
 
     const body = sorted.length
       ? sorted.map(entry => `
           <div class="entry">
-            <div class="top"><span>${esc(entry.date)}</span><span class="odo">${odoLabel(entry)}</span></div>
+            <div class="top">
+              <span>${esc(entry.date)}</span>
+              <span class="odo">${odoLabel(entry)}</span>
+              <button class="edit-btn" data-action="editEntry" data-id="${esc(entry.id)}" aria-label="Изменить запись">✏️</button>
+            </div>
             <div class="work">${esc(entry.work)}</div>
             ${(entry.items || []).map(it => `<div class="part"><span>${esc(it.name)}</span><span class="art">${esc(it.article || '')}</span></div>`).join('')}
           </div>`).join('')
       : '<div class="empty">Записей пока нет.</div>';
 
-    box.innerHTML = body + '<button class="btn secondary" data-action="backToCar">‹ К автомобилю</button>';
+    box.innerHTML = body;
     Router.show('s-history');
     Router.setHeader(car.name, 'История');
-  }
-
-  /* ---------- Edit list ---------- */
-  function renderEditList() {
-    const car = Store.currentCar();
-    if (!car) return Router.switchTab('cars');
-    const box = document.getElementById('s-editList');
-    const sorted = Store.getSortedEntries(car);
-
-    const body = sorted.length
-      ? '<div class="card">' + sorted.map(e => `
-          <div class="list-row" data-action="editEntry" data-id="${esc(e.id)}">
-            <div><div class="t">${esc(e.date)} — ${esc(e.work)}</div><div class="s">${odoLabel(e)}</div></div>
-            <div class="arrow">›</div></div>`).join('') + '</div>'
-      : '<div class="empty">Нет записей для изменения.</div>';
-
-    box.innerHTML = body + '<button class="btn secondary" data-action="backToCar">‹ К автомобилю</button>';
-    Router.show('s-editList');
-    Router.setHeader(car.name, 'Изменить данные');
   }
 
   /* ---------- Entry form ---------- */
@@ -797,7 +870,7 @@ const Views = (() => {
 
     Store.curEntryId = entryId || null;
     const entry = entryId ? car.entries.find(e => e.id === entryId) : null;
-    if (entryId && !entry) return renderEditList();
+    if (entryId && !entry) return renderHistory();
 
     const data = entry || { date: '', km: '', mh: '', work: '', items: [{ name: '', article: '' }] };
     const box = document.getElementById('s-entryForm');
@@ -1002,7 +1075,7 @@ const Views = (() => {
     if (!skipNav) {
       Store.entryFormBaseline = null;
       Store.curEntryId = null;
-      backToCar();
+      renderHistory();
     }
     return true;
   }
@@ -1016,13 +1089,13 @@ const Views = (() => {
     Store.curEntryId = null;
     Store.entryFormBaseline = null;
     Haptics.notify('warning');
-    renderEditList();
+    renderHistory();
   }
 
   function cancelEntryForm() {
     Store.entryFormBaseline = null;
     Store.curEntryId = null;
-    backToCar();
+    renderHistory();
   }
 
   /* ---------- Parts ---------- */
@@ -1044,7 +1117,7 @@ const Views = (() => {
     }
     card.innerHTML = filtered.map(p => `
       <div class="list-row" data-action="editPart" data-id="${esc(p.id)}">
-        <div><div class="t">${esc(p.name)}</div><div class="s">${esc(p.article || '—')}</div></div>
+        <div class="main"><div class="t">${esc(p.name)}</div><div class="s">${esc(p.article || '—')}</div></div>
         <div class="arrow">›</div></div>`).join('');
   }
 
@@ -1099,10 +1172,12 @@ const Views = (() => {
   }
 
   return {
-    renderCars, showAddCar, addCar, openCar, deleteCar, backToCar,
-    renderHistory, renderEditList, showEntryForm,
+    renderCars, showAddCar, addCar, showRenameCar, saveRenameCar,
+    openCar, deleteCar, backToCar, backToCarMenu,
+    renderHistory, showEntryForm,
     addPartField, removePartField, saveEntry, deleteEntry, cancelEntryForm,
-    renderParts, showAddPart, savePart, delPart
+    renderParts, showAddPart, savePart, delPart,
+    isEntryFormDirty
   };
 })();
 
@@ -1115,6 +1190,9 @@ function handleAction(action, el) {
     case 'showAddCar':         return Views.showAddCar();
     case 'addCar':             return Views.addCar();
     case 'openCar':            return Views.openCar(el.dataset.id);
+    case 'renameCar':          return Views.showRenameCar(el.dataset.id);
+    case 'saveRenameCar':      return Views.saveRenameCar(el.dataset.id);
+    case 'backToCarMenu':      return Views.backToCarMenu();
     case 'deleteCar':          return Views.deleteCar();
     case 'backToCar':          return Views.backToCar();
     case 'go':                 return go(el.dataset.where);
@@ -1134,12 +1212,10 @@ function handleAction(action, el) {
 function go(where) {
   if (where === 'history')       Views.renderHistory();
   else if (where === 'addEntry') Views.showEntryForm(null);
-  else if (where === 'editList') Views.renderEditList();
 }
 
-/* Автогвард формы: перехватываем переключение таба и явные «назад» */
 async function guardLeaveEntryForm(afterFn) {
-  if (!Views.isEntryFormDirtyPublic()) { afterFn(); return; }
+  if (!Views.isEntryFormDirty()) { afterFn(); return; }
   const wantsSave = await Dialog.confirm(
     'Вы не сохранили изменения.\n\nОК — сохранить и выйти\nОтмена — выйти без сохранения'
   );
@@ -1158,8 +1234,13 @@ document.addEventListener('click', ev => {
   const el = ev.target.closest('[data-action]');
   if (!el) return;
   const action = el.dataset.action;
-  /* Табы — с защитой несохранённых данных */
-  if (action === 'switchTab' || action === 'backToCar') {
+
+  /* Клик по карандашу не должен открывать авто */
+  if (action === 'renameCar' || action === 'editEntry' || action === 'removePartField') {
+    ev.stopPropagation();
+  }
+
+  if (action === 'switchTab' || action === 'backToCar' || action === 'backToCarMenu') {
     ev.preventDefault();
     guardLeaveEntryForm(() => handleAction(action, el));
     return;
@@ -1167,33 +1248,11 @@ document.addEventListener('click', ev => {
   handleAction(action, el);
 });
 
-/* debounce на поиск запчастей */
 (function bindSearch() {
   const input = document.getElementById('partSearch');
   if (!input) return;
   input.addEventListener('input', debounce(() => Views.renderParts(), 150));
 })();
-
-/* Публичный доступ к проверке dirty (для guardLeaveEntryForm) */
-Views.isEntryFormDirtyPublic = function () {
-  if (!document.getElementById('s-entryForm').classList.contains('active')) return false;
-  if (Store.entryFormBaseline == null) return false;
-  const state = (() => {
-    const dateEl = document.getElementById('f-date');
-    if (!dateEl) return null;
-    return {
-      date: dateEl.value,
-      km: document.getElementById('f-km')?.value ?? '',
-      mh: document.getElementById('f-mh')?.value ?? '',
-      work: document.getElementById('f-work')?.value.trim() ?? '',
-      items: [...document.querySelectorAll('#partsFields .partfield')].map(f => ({
-        name: f.querySelector('.pf-name')?.value.trim() ?? '',
-        article: f.querySelector('.pf-art')?.value.trim() ?? ''
-      }))
-    };
-  })();
-  return state ? JSON.stringify(state) !== Store.entryFormBaseline : false;
-};
 
 /* =========================================================================
  * Init
