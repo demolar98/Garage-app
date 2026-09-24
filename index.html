@@ -295,21 +295,52 @@ const Settings = (() => {
  * Storage module
  * ========================================================================= */
 const Storage = (() => {
-  const CHUNK = 3800;
+  const MAX_VALUE_BYTES = 4000; /* лимит Telegram — 4096 байт на значение; берём с запасом */
+  const encoder = new TextEncoder();
   const queues = new Map();
   let cloudAvailable = false;
   let warningShown = false;
+  let lastError = null;
 
   const cs = () => TG?.CloudStorage || null;
   const hasCloud = () => !!cs();
   const delay = ms => new Promise(r => setTimeout(r, ms));
 
+  /* Режем строку на части по РЕАЛЬНОМУ размеру в байтах (UTF-8), а не по
+     количеству символов JS. Важно для кириллицы: один русский символ в
+     UTF-8 — это 2 байта, а не 1, так что расчёт "по символам" на русском
+     тексте фактически превышал лимит Telegram почти вдвое и Telegram
+     молча отбрасывал такие значения. */
+  function chunkByBytes(str, maxBytes) {
+    const chars = Array.from(str);
+    const chunks = [];
+    let current = '';
+    let bytes = 0;
+    for (const ch of chars) {
+      const chBytes = encoder.encode(ch).length;
+      if (bytes + chBytes > maxBytes && current) {
+        chunks.push(current);
+        current = ch;
+        bytes = chBytes;
+      } else {
+        current += ch;
+        bytes += chBytes;
+      }
+    }
+    if (current) chunks.push(current);
+    return chunks;
+  }
+
   function csSetItem(key, value) {
     return new Promise(resolve => {
       const c = cs();
       if (!c) return resolve(false);
-      try { c.setItem(key, value, (err, ok) => resolve(!err && ok !== false)); }
-      catch (_) { resolve(false); }
+      try {
+        c.setItem(key, value, (err, ok) => {
+          if (err) lastError = String(err);
+          resolve(!err && ok !== false);
+        });
+      } catch (e) { lastError = String(e?.message || e); resolve(false); }
     });
   }
   async function csSetItemRetry(key, value, tries = 3) {
@@ -323,8 +354,12 @@ const Storage = (() => {
     return new Promise(resolve => {
       const c = cs();
       if (!c) return resolve('');
-      try { c.getItem(key, (err, v) => resolve(err ? '' : String(v ?? ''))); }
-      catch (_) { resolve(''); }
+      try {
+        c.getItem(key, (err, v) => {
+          if (err) lastError = String(err);
+          resolve(err ? '' : String(v ?? ''));
+        });
+      } catch (e) { lastError = String(e?.message || e); resolve(''); }
     });
   }
   function csGetItems(keys) {
@@ -334,12 +369,13 @@ const Storage = (() => {
       if (!c) return resolve({});
       try {
         c.getItems(keys, (err, values) => {
+          if (err) lastError = String(err);
           const src = !err && values && typeof values === 'object' ? values : {};
           const out = {};
           keys.forEach(k => { out[k] = String(src[k] ?? ''); });
           resolve(out);
         });
-      } catch (_) { resolve({}); }
+      } catch (e) { lastError = String(e?.message || e); resolve({}); }
     });
   }
   function csRemoveItems(keys) {
@@ -377,7 +413,7 @@ const Storage = (() => {
       const back = await csGetItem(key);
       await csRemoveItems([key]);
       return back === token;
-    } catch (_) { return false; }
+    } catch (e) { lastError = String(e?.message || e); return false; }
   }
 
   const local = {
@@ -427,8 +463,7 @@ const Storage = (() => {
   }
   async function persistCloud(name, dataObj) {
     const str = JSON.stringify(dataObj);
-    const chunks = [];
-    for (let i = 0; i < str.length; i += CHUNK) chunks.push(str.slice(i, i + CHUNK));
+    const chunks = chunkByBytes(str, MAX_VALUE_BYTES);
     if (!chunks.length) chunks.push('null');
 
     const prevMeta = parseMeta(await csGetItem(`${name}_meta`));
@@ -554,7 +589,25 @@ const Storage = (() => {
     } catch (_) { return null; }
   }
 
-  return { init, load, persist, usage, chunkSize: CHUNK, isCloud: () => cloudAvailable, hasCloud };
+  /* Диагностика — почему облако недоступно/не пишется. Показываем прямо в
+     интерфейсе (не у всех есть доступ к консоли разработчика внутри Telegram). */
+  function diagnostics() {
+    return {
+      hasTelegramObj: !!window.Telegram,
+      hasWebApp: !!window.Telegram?.WebApp,
+      hasCloudStorage: hasCloud(),
+      platform: TG?.platform || '—',
+      version: TG?.version || '—',
+      cloudAvailable,
+      lastError: lastError || '—'
+    };
+  }
+
+  return {
+    init, load, persist, usage, diagnostics,
+    chunkSize: MAX_VALUE_BYTES,
+    isCloud: () => cloudAvailable, hasCloud
+  };
 })();
 
 /* =========================================================================
@@ -905,11 +958,22 @@ const Views = (() => {
   async function renderStorageStatus() {
     const el = document.getElementById('storageStatus');
     if (!el) return;
+
     if (!Storage.hasCloud()) {
-      el.textContent = '';
-      el.className = 'storage-status';
+      el.textContent = 'Нет доступа к Telegram CloudStorage — данные сохраняются только на этом устройстве.';
+      el.className = 'storage-status warn';
       return;
     }
+
+    if (!Storage.isCloud()) {
+      const d = Storage.diagnostics();
+      el.textContent = `Синхронизация не работает (платформа: ${d.platform}, версия: ${d.version}` +
+        (d.lastError !== '—' ? `, ошибка: ${d.lastError}` : '') +
+        '). Данные сохраняются только на этом устройстве.';
+      el.className = 'storage-status danger';
+      return;
+    }
+
     const u = await Storage.usage();
     if (!u) { el.textContent = ''; el.className = 'storage-status'; return; }
 
@@ -918,9 +982,9 @@ const Views = (() => {
 
     const allEntries = Store.cars.flatMap(c => c.entries || []);
     if (allEntries.length) {
-      const avgLen = allEntries.reduce((sum, e) => sum + JSON.stringify(e).length, 0) / allEntries.length;
-      if (avgLen > 0) {
-        const estimate = Math.floor((u.remaining * Storage.chunkSize) / avgLen);
+      const avgBytes = allEntries.reduce((sum, e) => sum + new TextEncoder().encode(JSON.stringify(e)).length, 0) / allEntries.length;
+      if (avgBytes > 0) {
+        const estimate = Math.floor((u.remaining * Storage.chunkSize) / avgBytes);
         text += ` · осталось места примерно на ${formatNumber(estimate)} записей`;
       }
     }
